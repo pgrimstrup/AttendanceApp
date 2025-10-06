@@ -1,0 +1,47 @@
+﻿@page
+@model Attendance.Pages.UploadEntraPassModel
+@{
+	ViewData["Title"] = "Upload EntraPass File";
+}
+
+<h2>Upload EntraPass CSV</h2>
+
+@if (ModelState.IsValid)
+{
+	if (Model.Success.HasValue)
+	{
+		if (Model.Success == true)
+		{
+			<div class="alert-success p-3">
+				File has been successfully uploaded
+			</div>
+		}
+		else
+		{
+			<div class="alert-danger p-3">
+				File could not be processed. Ensure it is in the expected format and is a valid CSV file.
+			</div>
+		}
+		<div class="my-3">
+			<a asp-page="/UploadEntraPass">Click here to upload another one</a>
+		</div>
+	}
+	else
+	{
+		<form method="post" enctype="multipart/form-data">
+			<div class="my-3">
+				<label for="File" class="form-label">Choose CSV File:</label>
+				<input type="file" id="File" name="File" class="form-control" />
+			</div>
+			<div class="my-3">
+				<button type="submit" class="btn btn-primary">Upload</button>
+			</div>
+		</form>
+	}
+}
+else
+{
+	<div>
+		<p style="color:red;">@ModelState.Values.FirstOrDefault()?.Errors.FirstOrDefault()?.ErrorMessage</p>
+	</div>
+}

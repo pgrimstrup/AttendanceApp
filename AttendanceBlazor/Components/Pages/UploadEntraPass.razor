@@ -1,0 +1,55 @@
+﻿@page "/UploadEntraPass"
+
+<h2>Upload EntraPass CSV</h2>
+
+<form method="post" enctype="multipart/form-data">
+	<div class="my-3">
+		<label for="File" class="form-label">Choose CSV File:</label>
+		<InputFile OnChange="HandleFileSelected" class="form-control" />
+	</div>
+	<div class="my-3">
+		<button class="btn btn-primary">Upload</button>
+	</div>
+</form>
+
+@if (!string.IsNullOrEmpty(UploadMessage))
+{
+    <div class="alert alert-info mt-3">@UploadMessage</div>
+}
+
+@code {
+    private string? UploadMessage;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        if (file == null)
+        {
+            UploadMessage = "No file selected.";
+            return;
+        }
+
+        if (file.ContentType != "text/csv")
+        {
+            UploadMessage = "Please upload a valid CSV file.";
+            return;
+        }
+
+        try
+        {
+            // Read the file content
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10 MB limit
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+
+            // Process the file content (e.g., parse CSV)
+            UploadMessage = $"File '{file.Name}' uploaded successfully. Size: {file.Size} bytes.";
+        }
+        catch (Exception ex)
+        {
+            UploadMessage = $"Error uploading file: {ex.Message}";
+        }
+    }
+
+}

@@ -1,0 +1,254 @@
+﻿@page "{year:int?}/{month:int?}"
+@using Attendance.ViewModels
+@model Attendance.Pages.CalendarModel
+@{
+	ViewData["Title"] = "Match Calendar";
+
+	string GetCellStyle(CalendarDayViewModel day)
+	{
+		if (!day.IsCurrentMonth)
+			return "other-month";
+
+		if (day.IsChecked)
+		{
+			if (day.IsCancelled)
+				return "bg-warning bg-opacity-25";
+			else
+				return "bg-success bg-opacity-25";
+		}
+
+		return "";
+	}
+}
+<style>
+	.day-cell {
+		height: 125px;
+		overflow: hidden;
+		background: #f9f9f9;
+	}
+
+	.other-month {
+		background-color: #e0e0e0;
+		color: #444;
+	}
+
+	.day-number {
+		font-weight: bold;
+		font-size: 1.2rem;
+	}
+</style>
+
+<div>
+	<div class="float-end">
+		@if (Model.Year > 2025 || (Model.Year == 2025 && Model.Month > 7))
+		{
+			<a asp-page="/Calendar" asp-route-year="@Model.PrevMonth.Year" asp-route-month="@Model.PrevMonth.Month" class="btn btn-sm btn-outline-dark fw-bold" style="width:180px">
+				&lt;&lt; @Model.PrevMonth.ToString("MMMM yyyy")
+			</a>
+		}
+		<a asp-page="/Calendar" asp-route-year="@Model.NextMonth.Year" asp-route-month="@Model.NextMonth.Month" class="btn btn-sm btn-outline-dark fw-bold" style="width:180px">
+			@Model.NextMonth.ToString("MMMM yyyy") &gt;&gt;
+		</a>
+	</div>
+	<h2>Pistol Events Calendar @Model.CurrentMonth.ToString("MMMM") @Model.CurrentMonth.Year</h2>
+</div>
+<div class="table-responsive">
+	<table class="table table-bordered text-center">
+		<thead class="thead-light">
+			<tr>
+				<th width="13%">Monday</th>
+				<th width="13%">Tuesday</th>
+				<th width="13%">Wednesday</th>
+				<th width="13%">Thursday</th>
+				<th width="13%">Friday</th>
+				<th width="13%">Saturday</th>
+				<th width="13%">Sunday</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var week in Model.Weeks)
+			{
+				<tr>
+					@foreach (var day in week.Days)
+					{
+						<td>
+							<div class="day-cell @GetCellStyle(day)">
+								<div class="day-number float-start m-2">@day.Date.Day</div>
+								<div class="float-end m-2"><input type="checkbox" class="form-check-input" asp-for="@day.IsChecked" /></div>
+								<div class="mt-5">@day.Description</div>
+							</div>
+						</td>
+					}
+				</tr>
+			}
+		</tbody>
+	</table>
+</div>
+
+<hr />
+<h2>Special Events</h2>
+<form method="post" asp-page-handler="AddSpecialEvent">
+	<div class="row">
+		<div class="col-3">
+			<label class="form-label">Start Date</label>
+			<input type="date" class="form-control" name="startDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+		</div>
+		<div class="col-3">
+			<label class="form-label">End Date</label>
+			<input type="date" class="form-control" name="endDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+		</div>
+		<div class="col-3">
+		</div>
+		<div class="col-3">
+		</div>
+		<div class="col-9 my-1">
+			<input type="text" class="form-control" maxlength="200" placeholder="Description" name="description" />
+		</div>
+		<div class="col-3 my-1">
+			<button type="submit" class="btn btn-primary">Add Special Event</button>
+		</div>
+	</div>
+</form>
+@if (!ModelState.IsValid)
+{
+	<div class="alert alert-danger mt-3">
+		@foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
+		{
+			<p>@error.ErrorMessage</p>
+		}
+	</div>
+}
+
+<div class="table-responsive-sm">
+	<table class="table table-bordered text-start">
+		<tr>
+			<th>Date of Upcoming Events</th>
+			<th>Description</th>
+			<th></th>
+		</tr>
+		@if (Model.SpecialEvents.Count == 0)
+		{
+			<tr>
+				<td colspan="3">
+					<div class="alert-warning p-4">
+						There are no upcoming Special Events in the calendar
+					</div>
+				</td>
+			</tr>
+		}
+		@foreach (var se in Model.SpecialEvents)
+		{
+			<tr>
+				<td>@se.Duration</td>
+				<td>@se.Description</td>
+				<td width="1px">
+					<form method="post" asp-page-handler="DeleteSpecialEvent">
+						<input type="hidden" name="id" value="@se.Id" />
+						<button type="submit" class="btn-sm btn-danger">Delete</button>
+					</form>
+				</td>
+			</tr>
+		}
+	</table>
+</div>
+
+<hr />
+<h2>Recurring Events</h2>
+<form method="post" asp-page-handler="AddRecurringEvent">
+	<div class="row">
+		<div class="col-3">
+			<label class="form-label">Frequency</label>
+			<select class="form-select" name="frequency">
+				<option value="@Data.EventFrequency.EveryWeek">Every week of the month</option>
+				<option value="@Data.EventFrequency.FirstWeek">Every 1st week of the month</option>
+				<option value="@Data.EventFrequency.SecondWeek">Every 2nd week of the month</option>
+				<option value="@Data.EventFrequency.ThirdWeek">Every 3rd week of the month</option>
+				<option value="@Data.EventFrequency.FourthWeek">Every 4th week of the month</option>
+			</select>
+		</div>
+		<div class="col-3">
+			<label class="form-label">Day of Week</label>
+			<select class="form-select" name="dayOfWeek">
+				<option value="@DayOfWeek.Monday">On Monday</option>
+				<option value="@DayOfWeek.Tuesday">On Tuesday</option>
+				<option value="@DayOfWeek.Wednesday">On Wednesday</option>
+				<option value="@DayOfWeek.Thursday">On Thursday</option>
+				<option value="@DayOfWeek.Friday">On Friday</option>
+				<option value="@DayOfWeek.Saturday">On Saturday</option>
+				<option value="@DayOfWeek.Sunday">On Sunday</option>
+			</select>
+		</div>
+		<div class="col-3">
+			<label class="form-label">Start Date</label>
+			<input type="date" class="form-control" name="startDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+		</div>
+		<div class="col-3">
+		</div>
+		<div class="col-9 my-1">
+			<input type="text" class="form-control" maxlength="200" placeholder="Description" name="description" />
+		</div>
+		<div class="col-3 my-1">
+			<button type="submit" class="btn btn-primary">Add Recurring Event</button>
+		</div>
+	</div>
+</form>
+@if (!ModelState.IsValid)
+{
+	<div class="alert alert-danger mt-3">
+		@foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
+		{
+			<p>@error.ErrorMessage</p>
+		}
+	</div>
+}
+
+<div class="table-responsive-sm">
+	<table class="table table-bordered text-start">
+		<tr>
+			<th>Frequency of Upcoming Events</th>
+			<th>Description</th>
+			<th>End Recurring Series</th>
+			<th></th>
+		</tr>
+		@if (Model.RecurringEvents.Count == 0)
+		{
+			<tr>
+				<td colspan="4">
+					<div class="alert-warning p-4">
+						There are no Recurring Events for future dates in the calendar
+					</div>
+				</td>
+			</tr>
+		}
+		@foreach (var re in Model.RecurringEvents)
+		{
+			<tr>
+				<td>@re.FrequencyDescription</td>
+				<td>@re.Description</td>
+				<td width="1px" style="white-space:nowrap">
+					@if (re.IsDeleted)
+					{
+						<form method="post" asp-page-handler="ResumeRecurringEvent">
+							<input type="hidden" name="id" value="@re.Id" />
+							<button type="submit" class="btn-sm btn-success">Resume</button>
+						</form>
+					}
+					else
+					{
+						<form method="post" asp-page-handler="EndRecurringEvent">
+							<input type="hidden" name="id" value="@re.Id" />
+							<input type="date" name="endDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control" style="display:unset; width:unset" />
+							<button type="submit" class="btn-sm btn-warning">End Series</button>
+						</form>
+					}
+				</td>
+				<td width="1px" style="white-space:nowrap">
+					<form method="post" asp-page-handler="DeleteRecurringEvent">
+						<input type="hidden" name="id" value="@re.Id" />
+						<button type="submit" class="btn-sm btn-danger">Delete</button>
+					</form>
+				</td>
+			</tr>
+		}
+	</table>
+</div>
