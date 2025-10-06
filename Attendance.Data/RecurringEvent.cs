@@ -14,8 +14,8 @@ public class RecurringEvent
 {
     public int Id { get; set; }
     public EventFrequency Frequency { get; set; }
-    public DayOfWeek DayOfWeek { get; set; }
-    public DateOnly StartDate { get; set; }
+    public DayOfWeek DayOfWeek { get; set; } = DayOfWeek.Sunday;
+    public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
     public DateOnly? EndDate { get; set; }
     public string? Description { get; set; }
 }

@@ -13,6 +13,8 @@ public class RecurringEventViewModel
 
     public int Id => _event.Id;
 
+    public DateTime EndDate { get; set; } = DateTime.Today;
+
     public string FrequencyDescription
     {
         get

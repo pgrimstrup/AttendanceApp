@@ -56,8 +56,13 @@ public class CalendarDayViewModel
         get => (SpecialEvents > 0 || RecurringEvents > 0) && !_day.CancelEvents;
         set
         {
-
+            _day.CancelEvents = !value;
         }
+    }
+
+    public bool IsDisabled
+    {
+        get => SpecialEvents == 0 && RecurringEvents == 0;
     }
 
     public bool IsCancelled => _day.CancelEvents;

@@ -1,0 +1,15 @@
+﻿.day-cell {
+    height: 125px;
+    overflow: hidden;
+    background: #f9f9f9;
+}
+
+.other-month {
+    background-color: #e0e0e0;
+    color: #444;
+}
+
+.day-number {
+    font-weight: bold;
+    font-size: 1.2rem;
+}
