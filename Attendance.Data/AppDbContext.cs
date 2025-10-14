@@ -55,14 +55,22 @@ public class AppDbContext : DbContext
         using var reader = await command.ExecuteReaderAsync();
         var properties = typeof(T).GetProperties();
 
+        var columnNames = new List<string>();
+        for (int i = 0; i < reader.FieldCount; i++) 
+            columnNames.Add(reader.GetName(i));
+
         while (await reader.ReadAsync())
         {
             var instance = new T();
             foreach (var property in properties)
             {
-                if (!reader.IsDBNull(reader.GetOrdinal(property.Name)))
+                if(!columnNames.Contains(property.Name, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
+                int ordinal = reader.GetOrdinal(property.Name);
+                if (!reader.IsDBNull(ordinal))
                 {
-                    property.SetValue(instance, reader[property.Name]);
+                    property.SetValue(instance, reader[ordinal]);
                 }
             }
 

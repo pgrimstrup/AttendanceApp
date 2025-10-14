@@ -1,144 +1,187 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject IAttendanceManager AttendanceManager
 
-<PageTitle>Home</PageTitle>
+@code {
+
+    public HomeViewModel Model { get; set; } = new(null);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        Model = await LoadModelData(null);
+    }
+
+
+    private async Task<HomeViewModel> LoadModelData(int? year)
+    {
+        var model = new HomeViewModel(year);
+
+        var summaries = AttendanceManager.GetAttendanceSummariesAsync(Model.StartDate, Model.EndDate);
+        foreach(var summary in await summaries)
+        {
+            switch(summary.Sections)
+            {
+                case SectionTags.CAS:
+                    model.CAS.Add(summary);
+                    break;
+                case SectionTags.IPSC:
+                    model.IPSC.Add(summary);
+                    break;
+                case SectionTags.ISSF:
+                    model.ISSF.Add(summary);
+                    break;
+                default:
+                    model.MultiGun.Add(summary);
+                    break;
+            }
+        }
+
+        model.CAS.Sort((a, b) => a.SortCode.CompareTo(b.SortCode));
+        model.IPSC.Sort((a, b) => a.SortCode.CompareTo(b.SortCode));
+        model.ISSF.Sort((a, b) => a.SortCode.CompareTo(b.SortCode));
+        model.MultiGun.Sort((a, b) => a.SortCode.CompareTo(b.SortCode));
+
+        return model;
+    }
+
+}
+
+<PageTitle>RRGC Attendance Records</PageTitle>
 
 <div>
-    <h2 style="text-align:center">Current 2025-2026 shoot counts, by PNZ number, by Section</h2>
-    <h3 style="text-align: center">from 1 July 2025 to 3 October 2025</h3>
-    <div style="text-align: right">Last updated 04/10/2025 00:30</div>
+    <h2 style="text-align:center">Current @Model.YearTitle shoot counts, by PNZ number, by Section</h2>
+    <h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.EndDate.ToString("d MMMM yyyy")</h3>
+    <div style="text-align: center">Last updated @Model.LastUpdated.ToString("dd/MM/yyyy h:mm tt")</div>
 </div>
 <div class="row">
     <div class="col-3">
-        <div class="table-responsive">
-            <table class="table-sm table-borderless text-center">
+        <table class="table table-sm table-borderless table-striped text-center" width="100%">
+            <thead>
                 <tr>
-                    <th colspan="2"><h3>Multi Gun</h3></th>
+                    <th colspan="2" align="center"><h3>Multi Gun/Other</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
                 </tr>
-                <tr>
-                    <td>24461</td>
-                    <td>11</td>
-                </tr>
-                <tr>
-                    <td>30901</td>
-                    <td>9</td>
-                </tr>
-                <tr>
-                    <td>32275</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>36810</td>
-                    <td>7</td>
-                </tr>
-                <tr>
-                    <td>50520</td>
-                    <td>4</td>
-                </tr>
-            </table>
-        </div>
+            </thead>
+            <tbody>
+                @if (Model.MultiGun.Count == 0)
+                {
+                    <tr>
+                        <td colspan="2" align="center">No data</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach(var item in Model.MultiGun)
+                    {
+                        <tr>
+                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td>@item.Count</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
     </div>
 
     <div class="col-3">
-        <div class="table-responsive">
-            <table class="table-sm table-borderless text-center">
+        <table class="table table-sm table-borderless table-striped text-center" width="100%">
+            <thead>
                 <tr>
-                    <th colspan="2"><h3>CAS</h3></th>
+                    <th colspan="2" align="center"><h3>CAS</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
                 </tr>
-                <tr>
-                    <td>24461</td>
-                    <td>11</td>
-                </tr>
-                <tr>
-                    <td>30901</td>
-                    <td>9</td>
-                </tr>
-                <tr>
-                    <td>32275</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>36810</td>
-                    <td>7</td>
-                </tr>
-                <tr>
-                    <td>50520</td>
-                    <td>4</td>
-                </tr>
-            </table>
-        </div>
+            </thead>
+            <tbody>
+                @if (Model.CAS.Count == 0)
+                {
+                    <tr>
+                        <td colspan="2" align="center">No data</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.CAS)
+                    {
+                        <tr>
+                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td>@item.Count</td>
+                        </tr>
+                    }
+
+                }
+            </tbody>
+        </table>
     </div>
     <div class="col-3">
-        <div class="table-responsive">
-            <table class="table-sm table-borderless text-center">
+        <table class="table table-sm table-borderless table-striped text-center" width="100%">
+            <thead>
                 <tr>
-                    <th colspan="2"><h3>IPSC</h3></th>
+                    <th colspan="2" align="center"><h3>IPSC</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
                 </tr>
-                <tr>
-                    <td>24461</td>
-                    <td>11</td>
-                </tr>
-                <tr>
-                    <td>30901</td>
-                    <td>9</td>
-                </tr>
-                <tr>
-                    <td>32275</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>36810</td>
-                    <td>7</td>
-                </tr>
-                <tr>
-                    <td>50520</td>
-                    <td>4</td>
-                </tr>
-            </table>
-        </div>
+            </thead>
+            <tbody>
+                @if (Model.IPSC.Count == 0)
+                {
+                    <tr>
+                        <td colspan="2" align="center">No data</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.IPSC)
+                    {
+                        <tr>
+                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td>@item.Count</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
     </div>
     <div class="col-3">
-        <div class="table-responsive">
-            <table class="table-sm table-borderless text-center">
+        <table class="table table-sm table-borderless table-striped text-center" width="100%">
+            <thead>
                 <tr>
-                    <th colspan="2"><h3>ISSF</h3></th>
+                    <th colspan="2" align="center"><h3>ISSF</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
                 </tr>
-                <tr>
-                    <td>24461</td>
-                    <td>11</td>
-                </tr>
-                <tr>
-                    <td>30901</td>
-                    <td>9</td>
-                </tr>
-                <tr>
-                    <td>32275</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>36810</td>
-                    <td>7</td>
-                </tr>
-                <tr>
-                    <td>50520</td>
-                    <td>4</td>
-                </tr>
-            </table>
-        </div>
+            </thead>
+            <tbody>
+                @if (Model.ISSF.Count == 0)
+                {
+                    <tr>
+                        <td colspan="2" align="center">No data</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.ISSF)
+                    {
+                        <tr>
+                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td>@item.Count</td>
+                        </tr>
+                    }
+
+                }
+            </tbody>
+        </table>
     </div>
 </div>

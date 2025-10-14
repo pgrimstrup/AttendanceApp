@@ -15,9 +15,9 @@ namespace AttendanceBlazor.Controllers
         }
 
         [HttpGet("entrapass")]
-        public async Task<IActionResult> GetAsync()
+        public IActionResult Get()
         {
-            return Ok("POST CSV files only");
+            return StatusCode(405, "GET method is not allowed. Please use POST to upload a file.");
         }
 
         [HttpPost("entrapass")]

@@ -1,10 +1,13 @@
 ﻿using Attendance.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Attendance.Services;
 
 public interface IAttendanceManager
 {
-	IAsyncEnumerable<AttendanceRecord> GetAttendanceAsync(DateTime startDate, DateTime endDate, params int[] personId);
+	Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate);
+	Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers);
+	Task<EntraPassImport[]> GetSwipeCardEventsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers);
 }
 
 
@@ -52,7 +55,7 @@ CROSS JOIN Dates
 LEFT OUTER JOIN Entries on Entries.EntryPersonId = p.PersonId AND CONVERT(DATE, Entries.EntryTime) = Dates.EventDate
 LEFT OUTER JOIN Exits on Exits.ExitPersonId = p.PersonId AND CONVERT(DATE, ExitTime) = Dates.EventDate
 LEFT OUTER JOIN Ranges on Ranges.RangePersonId = p.PersonId AND CONVERT(DATE, RangeTime) = Dates.EventDate
-WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL)
+WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL OR Dates.IsMatchDay = 1)
 ";
 
 	readonly AppDbContext _db;
@@ -62,7 +65,7 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 		_db = db;
 	}
 
-	public async IAsyncEnumerable<AttendanceRecord> GetAttendanceAsync(DateTime startDate, DateTime endDate, params int[] personId)
+	public async Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers)
 	{
 		var parameters = new Dictionary<string, object?>
 		{
@@ -73,22 +76,66 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
         // Since we need to use string concatenation to build the IN clause, we need to ensure
 		// that all values are SQL parameters.
         var sql = Query;
-		if(personId != null && personId.Length > 0)
+		if(pnzNumbers != null && pnzNumbers.Length > 0)
 		{
 			int index = 1;
-			var idList = new List<string>();
-			foreach(var id in personId.Distinct())
+			var parameterNames = new List<string>();
+			foreach(var pnzNumber in pnzNumbers.Distinct())
 			{
-				parameters.Add($"@Id{index}", id);
-				idList.Add($"@Id{index}");
+				parameters.Add($"@P{index}", pnzNumber.Trim());
+				parameterNames.Add($"@P{index}");
 				index++;
             }
 
-			sql += " AND p.PersonId IN (" + string.Join(", ", idList) + ")";
+			sql += " AND p.PNZNumber IN (" + string.Join(", ", parameterNames) + ")";
 		}
 
-		var result = _db.QueryAsync<AttendanceRecord>(sql, parameters);
+		var results = new List<AttendanceRecord>();
+        var result = _db.QueryAsync<AttendanceRecord>(sql, parameters);
 		await foreach (var item in result)
-			yield return item;
+			results.Add(item);
+
+		return results.ToArray();
+    }
+
+	public async Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate)
+	{
+		var attendance = await GetAttendanceAsync(startDate, endDate);
+		var summaries = new Dictionary<string, AttendanceSummaryRecord>(StringComparer.OrdinalIgnoreCase);
+		foreach(var record in attendance)
+		{
+            // Need to have a valid PNZ number and be in a pistol section to count
+            if (string.IsNullOrWhiteSpace(record.PNZNumber) || !record.IsPistolSection)
+				continue;
+
+			if(!summaries.TryGetValue(record.PNZNumber, out var summary))
+			{
+				summary = new AttendanceSummaryRecord
+				{
+					PNZNumber = record.PNZNumber,
+					Sections = record.Sections,
+                    Count = 0
+				};
+				summaries.Add(record.PNZNumber, summary);
+			}
+
+            // Need to have scanned in at the range on a match day to count
+            if (!record.IsMatchDay || record.RangeTime == null)
+                continue;
+
+            summary.Count++;
+        }
+
+        return summaries.Values.ToArray();
+    }
+
+    public async Task<EntraPassImport[]> GetSwipeCardEventsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers)
+	{
+		var q = from ep in _db.EntraPassImports.AsNoTracking()
+				where ep.EventTime >= startDate && ep.EventTime < endDate && cardNumbers.Contains(ep.CardNumber)
+				orderby ep.EventTime
+                select ep;
+
+		return await q.ToArrayAsync();
     }
 }

@@ -17,6 +17,7 @@ builder.Services.AddDbContext<AppDbContext>(options => {
 builder.Services.AddScoped<IEntraPassImporter, EntraPassImporter>();
 builder.Services.AddScoped<ISportyRegistrationImporter, SportyRegistrationImporter>();
 builder.Services.AddScoped<ICalendarManager, CalendarManager>();
+builder.Services.AddScoped<IAttendanceManager, AttendanceManager>();
 
 var app = builder.Build();
 
