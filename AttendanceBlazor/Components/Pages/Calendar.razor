@@ -1,9 +1,5 @@
 ﻿@page "/Calendar/{Year:int?}/{Month:int?}"
 @rendermode InteractiveServer
-@using Attendance.Data
-@using Attendance.Services
-@using Attendance.ViewModels
-@using System.Threading.Tasks
 @inject NavigationManager NavigationManager
 @inject ICalendarManager CalendarManager
 
@@ -51,7 +47,7 @@
 
 	private async Task GotoNextMonth()
 	{
-		Model = await LoadModelData(Model.PrevMonth.Year, Model.PrevMonth.Month);
+		Model = await LoadModelData(Model.NextMonth.Year, Model.NextMonth.Month);
 	}
 
 	private async Task<CalendarViewModel> LoadModelData(int? year, int? month)

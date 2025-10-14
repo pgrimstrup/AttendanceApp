@@ -1,5 +1,4 @@
 ﻿@page "/UploadEntraPass"
-@using Attendance.Services
 @rendermode InteractiveServer
 
 @inject IEntraPassImporter Importer
@@ -8,7 +7,7 @@
 
 
 <div class="my-3">
-	<label for="File" class="form-label">Choose CSV File:</label>
+	<label for="CsvFile" class="form-label">Choose CSV File:</label>
     <InputFile OnChange="HandleFileSelected" class="form-control" />
 </div>
 

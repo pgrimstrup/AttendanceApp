@@ -7,4 +7,5 @@
   <Project Path="Attendance.ViewModels/Attendance.ViewModels.csproj" Id="ebda6a13-9ce1-4659-a304-cac76680a639" />
   <Project Path="AttendanceApp/AttendanceApp.csproj" />
   <Project Path="AttendanceBlazor/AttendanceBlazor.csproj" Id="3c28c0de-edca-4f94-88a0-dcd632a7ba43" />
+  <Project Path="ReportFileUploader/ReportFileUploader.csproj" Id="79627925-0851-43bf-83b1-1d4275d01700" />
 </Solution>

@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
+builder.Services.AddControllers(); // Using API controllers
+builder.Services.AddRazorComponents() // Using interactive blazor pages
     .AddInteractiveServerComponents();
 
 builder.Services.AddDbContext<AppDbContext>(options => {
@@ -18,6 +19,9 @@ builder.Services.AddScoped<ISportyRegistrationImporter, SportyRegistrationImport
 builder.Services.AddScoped<ICalendarManager, CalendarManager>();
 
 var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+app.MapControllers(); // Map API controllers
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

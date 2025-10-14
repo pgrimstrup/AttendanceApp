@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ReportFileUploader": {
+      "commandName": "Project",
+      "commandLineArgs": "-console"
+    }
+  }
+}
