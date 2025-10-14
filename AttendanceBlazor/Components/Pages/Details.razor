@@ -26,7 +26,7 @@
         var attendance = await AttendanceManager.GetAttendanceAsync(Model.StartDate, Model.EndDate, PNZNumber);
         foreach (var record in attendance)
         {
-            if(record.EntryTime == null && record.ExitTime == null && record.RangeTime == null)
+            if (record.EntryTime == null && record.ExitTime == null && record.RangeTime == null)
             {
                 // Ignore records with no times on this view
                 continue;
@@ -35,7 +35,7 @@
             model.Attendance.Add(new AttendanceViewModel(record));
         }
 
-        if(model.Attendance.Count > 0)
+        if (model.Attendance.Count > 0)
         {
             var cardNumbers = model.Attendance.Select(a => a.CardNumber).Distinct().ToArray();
             var swipeEvents = await AttendanceManager.GetSwipeCardEventsAsync(Model.StartDate, Model.EndDate, cardNumbers);
@@ -56,8 +56,22 @@
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 1)
             return name;
-        
-        return $"{parts[0]} {parts[^1].Substring(0,1)}";
+
+        return $"{parts[0]} {parts[^1].Substring(0, 1)}";
+    }
+
+    private async Task ExcludeEvent(int personId, DateTime eventDate)
+    {
+        await AttendanceManager.ExcludedAsync(personId, DateOnly.FromDateTime(eventDate));
+        Model = await LoadModelData(Model.Year, PNZNumber);
+        StateHasChanged();
+    }
+
+    private async Task IncludeEvent(int personId, DateTime eventDate)
+    {
+        await AttendanceManager.IncludedAsync(personId, DateOnly.FromDateTime(eventDate));
+        Model = await LoadModelData(Model.Year, PNZNumber);
+        StateHasChanged();
     }
 }
 
@@ -69,44 +83,86 @@
     <thead>
         <tr>
             <th>Date</th>
-            <th align="center">Match days (@Model.TotalMatchDays)</th>
+            <th style="text-align:center">Match days</th>
             <th>Entry time</th>
-            <th>Range swipe</th>
+            <th>On Range</th>
             <th>Exit time</th>
-            <th align="center">Events counted (@Model.TotalEventsCounted)</th>
+            <th style="text-align:center">Counted</th>
             <th>Time on range</th>
             <th>Card number</th>
             <th>Name</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
         @foreach (var record in Model.Attendance)
         {
             <tr>
-                <td>@record.EventDate.ToString("dddd, d MMMM")</td>
-                <td align="center">@if (record.IsMatchDay)
+                <td>@record.EventTitle</td>
+                <td style="text-align:center">
+                    @if (record.IsMatchDay)
                     {
-                        <input type="checkbox" readonly checked />
+                        <i class="bi bi-calendar-check" style="font-size: 18px" />
                     }
                 </td>
-                <td>@record.EntryTime</td>
-                <td>@record.RangeTime</td>
-                <td>@record.ExitTime</td>
-                <td align="center">
+                @if (record.IsAwayEvent)
+                {
+                    <td colspan="3">@record.AwayEventName</td>
+                }
+                else
+                {
+                    <td>@record.EntryTime</td>
+                    @if (record.IsMatchDay && String.IsNullOrEmpty(record.RangeTime) && record.IsCounted)
+                    {
+                        <td class="text-success"><i class="bi bi-person-check" style="font-size: 18px" /><span class="small"> Counted</span></td>
+                    }
+                    else if(record.IsMatchDay && !String.IsNullOrEmpty(record.RangeTime) && !record.IsCounted)
+                    {
+                        <td class="text-danger"><i class="bi bi-x-circle" style="font-size: 18px" /><span class="small"> Excluded</span></td>
+                    }
+                    else
+                    {
+                        <td>@record.RangeTime</td>
+                    }
+                    <td>@record.ExitTime</td>
+                }
+                <td style="text-align:center">
                     @if (record.IsCounted)
                     {
-                        <input type="checkbox" readonly checked />
+                        <i class="bi bi-check2-square" style="font-size: 18px" />
                     }
                 </td>
                 <td>@record.TimeOnRange</td>
                 <td>@record.CardNumber</td>
                 <td>@record.Name</td>
+                <td>
+                    @if (record.IsMatchDay && !record.IsCounted)
+                    {
+                        <button class="btn btn-sm btn-success" @onclick="async () => await IncludeEvent(record.PersonId, record.EventDate)">Include</button>
+                    }
+                    @if (record.IsMatchDay && record.IsCounted)
+                    {
+                        <button class="btn btn-sm btn-warning" @onclick="async () => await ExcludeEvent(record.PersonId, record.EventDate)">Exclude</button>
+                    }
+                </td>
             </tr>
         }
     </tbody>
+    <tfoot>
+        <tr>
+            <th style="text-align:end">Number of match days attended:</th>
+            <th style="text-align:center">@Model.TotalMatchDays</th>
+            <th style="text-align:end" colspan="3">Number of events counted:</th>
+            <th style="text-align:center">@Model.TotalEventsCounted</th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+        </tr>
+    </tfoot>
 </table>
 
-<h2 style="text-align: center" class="mt-3">All Swipe Card Events</h2>
+<h2 style="text-align: center" class="mt-5">All Swipe Card Events</h2>
 <table class="table table-striped table-sm">
     <thead>
         <tr>
@@ -119,7 +175,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach(var e in Model.SwipeEvents)
+        @foreach (var e in Model.SwipeEvents)
         {
             <tr>
                 <td>@e.EventTime.ToString("dddd, d MMMM")</td>

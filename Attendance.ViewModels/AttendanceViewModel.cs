@@ -15,16 +15,48 @@ namespace Attendance.ViewModels
             _record = record;
         }
 
+        public string EventTitle
+        {
+            get
+            {
+                if (_record.IsAwayEvent)
+                    return _record.EventDate.ToString("dddd, d MMMM") + " (Away)";
+                return _record.EventDate.ToString("dddd, d MMMM");
+            }
+        }
+
         public DateTime EventDate => _record.EventDate;
         public string EntryTime => _record.EntryTime.HasValue ? _record.EntryTime.Value.ToString("hh:mm tt") : "n/a";
         public string RangeTime => _record.RangeTime.HasValue ? _record.RangeTime.Value.ToString("hh:mm tt") : "";
         public string ExitTime => _record.ExitTime.HasValue ? _record.ExitTime.Value.ToString("hh:mm tt") : "n/a";
 
         public bool IsMatchDay => _record.IsMatchDay;
-        public bool IsCounted => _record.IsMatchDay && _record.IsPistolSection && _record.RangeTime.HasValue;
+        public bool IsAwayEvent => _record.IsAwayEvent;
 
-        public string Name => $"{_record.FirstName} {_record.LastName.Substring(0,1)}";
+        public bool IsCounted
+        {
+            get
+            {
+                if (_record.IsMatchDay && _record.IsPistolSection)
+                {
+                    if (_record.IsIncluded)
+                        return true;
+
+                    if (_record.IsExcluded)
+                        return false;
+
+                    return _record.RangeTime.HasValue;
+                }
+                return false;
+            }
+        }
+
+
+        public string AwayEventName => $"{_record.AwayEventName} - {_record.AwayEventLocation}".Trim(' ', '-');
+
+        public string Name => $"{_record.FirstName} {_record.LastName.Substring(0, 1)}";
         public string CardNumber => _record.SwipedCardNumber;
+        public int PersonId => _record.PersonId;
 
         public string TimeOnRange
         {

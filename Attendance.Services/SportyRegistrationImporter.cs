@@ -13,11 +13,13 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
 {
     readonly ILogger _logger;
     readonly AppDbContext _dbContext;
+    readonly IAttendanceManager _attendanceManager;
 
-    public SportyRegistrationImporter(ILogger<EntraPassImporter> logger, AppDbContext dbContext)
+    public SportyRegistrationImporter(AppDbContext dbContext, ILogger<EntraPassImporter> logger, IAttendanceManager attendanceManager)
     {
         _logger = logger;
         _dbContext = dbContext;
+        _attendanceManager = attendanceManager;
     }
 
     public async Task<bool> Import(Stream stream)
@@ -98,6 +100,7 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
         }
 
         await _dbContext.SaveChangesAsync();
+        _attendanceManager.FlushCache();    
         return true;
     }
 
@@ -179,6 +182,8 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
         return -1;
     }
 
+    // TO-DO: REFACTOR: This is a bit fragile, but the CSV file does not have a specific column for section
+    // so we have to look for specific text in the headers to determine the section
     private SectionTags FindSectionTag(CSVReader csv)
     {
         for (int i = 0; i < csv.Headers.Length; i++)

@@ -1,5 +1,6 @@
 ﻿using Attendance.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Attendance.Services;
@@ -21,13 +22,15 @@ public interface ICalendarManager
 
 public class CalendarManager : ICalendarManager
 {
-    readonly AppDbContext _context;
+    readonly IServiceProvider _services;
     readonly ILogger _logger;
+    readonly IAttendanceManager _attendanceManager;
 
-    public CalendarManager(AppDbContext context, ILogger<CalendarManager> logger)
+    public CalendarManager(IServiceProvider services, ILogger<CalendarManager> logger, IAttendanceManager attendanceManager)
     {
-        _context = context;
+        _services = services;
         _logger = logger;
+        _attendanceManager = attendanceManager;
     }
 
     public async Task<CalendarDay[]> GetCalendarDays(int year, int month)
@@ -40,7 +43,9 @@ public class CalendarManager : ICalendarManager
         while(endDate.DayOfWeek != DayOfWeek.Sunday)
             endDate = endDate.AddDays(1);
 
-        return await _context.CalendarDays
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.CalendarDays
             .AsNoTracking()
             .Where(cd => cd.Date >= DateOnly.FromDateTime(startDate) && cd.Date <= DateOnly.FromDateTime(endDate))
             .ToArrayAsync();
@@ -53,7 +58,10 @@ public class CalendarManager : ICalendarManager
             startDate = startDate.AddYears(-1);
 
         startDate = startDate.AddDays(-7);
-        return await _context.RecurringEvents
+
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.RecurringEvents
             .AsNoTracking()
             .Where(e => e.EndDate == null || e.EndDate >= startDate)
             .ToArrayAsync();
@@ -66,7 +74,10 @@ public class CalendarManager : ICalendarManager
             startDate = startDate.AddYears(-1);
 
         startDate = startDate.AddDays(-7);
-        return await _context.SpecialEvents
+
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.SpecialEvents
             .AsNoTracking()
             .Where(e => e.EndDate >= startDate)
             .ToArrayAsync();
@@ -77,10 +88,12 @@ public class CalendarManager : ICalendarManager
     {
         try
         {
-            var found = await _context.RecurringEvents.FindAsync(e.Id);
+            using var scope = _services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var found = await context.RecurringEvents.FindAsync(e.Id);
             if (found == null)
             {
-                await _context.RecurringEvents.AddAsync(e);
+                await context.RecurringEvents.AddAsync(e);
             }
             else
             {
@@ -89,9 +102,9 @@ public class CalendarManager : ICalendarManager
                 found.DayOfWeek = e.DayOfWeek;
                 found.Description = e.Description;
             }
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            await CalculateCalendarDays();
+            await CalculateCalendarDays(context);
             return true;
         }
         catch(Exception ex)
@@ -105,10 +118,12 @@ public class CalendarManager : ICalendarManager
     {
         try
         {
-            var found = await _context.SpecialEvents.FindAsync(e.Id);
+            using var scope = _services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var found = await context.SpecialEvents.FindAsync(e.Id);
             if (found == null)
             {
-                await _context.SpecialEvents.AddAsync(e);
+                await context.SpecialEvents.AddAsync(e);
             }
             else
             {
@@ -116,9 +131,9 @@ public class CalendarManager : ICalendarManager
                 found.EndDate = e.EndDate;
                 found.Description = e.Description;
             }
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            await CalculateCalendarDays();
+            await CalculateCalendarDays(context);
             return true;
         }
         catch(Exception ex)
@@ -132,14 +147,16 @@ public class CalendarManager : ICalendarManager
     {
         try
         {
-            var found = _context.RecurringEvents.Find(id);
+            using var scope = _services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var found = context.RecurringEvents.Find(id);
             if (found != null)
             {
-                _context.RecurringEvents.Remove(found);
+                context.RecurringEvents.Remove(found);
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
-                await CalculateCalendarDays();
+                await CalculateCalendarDays(context);
             }
             return true;
         }
@@ -154,14 +171,16 @@ public class CalendarManager : ICalendarManager
     {
         try
         {
-            var found = _context.RecurringEvents.Find(id);
+            using var scope = _services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var found = context.RecurringEvents.Find(id);
             if (found != null)
             {
                 found.EndDate = null;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
-                await CalculateCalendarDays();
+                await CalculateCalendarDays(context);
             }
             return true;
         }
@@ -177,15 +196,17 @@ public class CalendarManager : ICalendarManager
     {
         try
         {
-            var found = _context.RecurringEvents.Find(id);
+            using var scope = _services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var found = context.RecurringEvents.Find(id);
             if (found != null)
             {
                 DateOnly end = DateOnly.FromDateTime(endDate);
                 found.EndDate = end;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
-                await CalculateCalendarDays();
+                await CalculateCalendarDays(context);
             }
             return true;
         }
@@ -200,13 +221,15 @@ public class CalendarManager : ICalendarManager
     {
         try
         {
-            var found = _context.SpecialEvents.Find(id);
+            using var scope = _services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var found = context.SpecialEvents.Find(id);
             if (found != null)
             {
-                _context.SpecialEvents.Remove(found);
-                await _context.SaveChangesAsync();
+                context.SpecialEvents.Remove(found);
+                await context.SaveChangesAsync();
 
-                await CalculateCalendarDays();
+                await CalculateCalendarDays(context);
             }
             return true;
         }
@@ -217,7 +240,7 @@ public class CalendarManager : ICalendarManager
         }
     }
 
-    private async Task CalculateCalendarDays()
+    private async Task CalculateCalendarDays(AppDbContext context)
     {
         DateTime startTime = new DateTime(DateTime.Today.Year, 7, 1);
         if (DateTime.Today.Month <= 6)
@@ -228,7 +251,8 @@ public class CalendarManager : ICalendarManager
 
         DateOnly fromDate = DateOnly.FromDateTime(startTime).AddDays(-7);
         DateOnly toDate = DateOnly.FromDateTime(endTime).AddDays(7);
-        var days = await _context.CalendarDays
+
+        var days = await context.CalendarDays
             .Where(cd => cd.Date >= fromDate)
             .ToDictionaryAsync(d =>d.Date);
 
@@ -244,7 +268,7 @@ public class CalendarManager : ICalendarManager
                 cday = new CalendarDay {
                     Date = date
                 };
-                await _context.CalendarDays.AddAsync(cday);
+                await context.CalendarDays.AddAsync(cday);
                 days[date] = cday;
             }
 
@@ -259,8 +283,8 @@ public class CalendarManager : ICalendarManager
             date = date.AddDays(1);
         }
 
-        await _context.SaveChangesAsync();
-
+        await context.SaveChangesAsync();
+        _attendanceManager.FlushCache();
     }
 
     private int CountRecurringEvents(DateOnly date, RecurringEvent[] recurringEvents, List<string> descriptions)

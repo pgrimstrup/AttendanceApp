@@ -13,11 +13,13 @@ public class EntraPassImporter : IEntraPassImporter
 {
     readonly ILogger _logger;
     readonly AppDbContext _dbContext;
+    readonly IAttendanceManager _attendanceManager;
 
-    public EntraPassImporter(ILogger<EntraPassImporter> logger, AppDbContext dbContext)
+    public EntraPassImporter(AppDbContext dbContext, ILogger<EntraPassImporter> logger, IAttendanceManager attendanceManager)
     {
         _logger = logger;
         _dbContext = dbContext;
+        _attendanceManager = attendanceManager;
     }
 
     public async Task<bool> Import(Stream stream)
@@ -79,6 +81,7 @@ public class EntraPassImporter : IEntraPassImporter
         }
 
         await _dbContext.SaveChangesAsync();
+        _attendanceManager.FlushCache();
         return true;
     }
 

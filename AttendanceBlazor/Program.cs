@@ -13,11 +13,13 @@ builder.Services.AddRazorComponents() // Using interactive blazor pages
 builder.Services.AddDbContext<AppDbContext>(options => {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+builder.Services.AddMemoryCache();
 
 builder.Services.AddScoped<IEntraPassImporter, EntraPassImporter>();
 builder.Services.AddScoped<ISportyRegistrationImporter, SportyRegistrationImporter>();
-builder.Services.AddScoped<ICalendarManager, CalendarManager>();
-builder.Services.AddScoped<IAttendanceManager, AttendanceManager>();
+
+builder.Services.AddSingleton<ICalendarManager, CalendarManager>();
+builder.Services.AddSingleton<IAttendanceManager, AttendanceManager>();
 
 var app = builder.Build();
 

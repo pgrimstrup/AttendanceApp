@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public virtual DbSet<SpecialEvent> SpecialEvents { get; set; } = null!;
     public virtual DbSet<RecurringEvent> RecurringEvents { get; set; } = null!;
     public virtual DbSet<AwayEvent> AwayEvents { get; set; } = null!;
+    public virtual DbSet<OverrideEvent> OverrideEvents { get; set; } = null!;
     public virtual DbSet<SportyImport> SportyImports { get; set; } = null!;
     public virtual DbSet<EntraPassImport> EntraPassImports { get; set; } = null!;
 
@@ -126,5 +127,10 @@ public class AppDbContext : DbContext
             e.Property(e => e.EventName).HasMaxLength(200);
             e.Property(e => e.Notes);
         });
+
+        builder.Entity<OverrideEvent>(e => {
+            e.ToTable("OverrideEvent");
+            e.HasKey(e => new { e.PersonId, e.EventDate });
+        }); 
     }
 }
