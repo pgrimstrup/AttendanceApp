@@ -6,8 +6,6 @@ public class CalendarViewModel
     public int Month { get; set; }
 
     public List<CalendarWeekViewModel> Weeks { get; } = new();
-    public List<RecurringEventViewModel> RecurringEvents { get; } = new();
-    public List<SpecialEventViewModel> SpecialEvents { get; } = new();
 
     public DateTime CurrentMonth => new DateTime(Year, Month, 1);
     public DateTime NextMonth => CurrentMonth.AddMonths(1);

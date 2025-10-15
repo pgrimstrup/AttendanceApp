@@ -30,14 +30,14 @@ namespace Attendance.ViewModels
         public string RangeTime => _record.RangeTime.HasValue ? _record.RangeTime.Value.ToString("hh:mm tt") : "";
         public string ExitTime => _record.ExitTime.HasValue ? _record.ExitTime.Value.ToString("hh:mm tt") : "n/a";
 
-        public bool IsMatchDay => _record.IsMatchDay;
+        public bool IsMatchDay => _record.IsPistolDay;
         public bool IsAwayEvent => _record.IsAwayEvent;
 
         public bool IsCounted
         {
             get
             {
-                if (_record.IsMatchDay && _record.IsPistolSection)
+                if (_record.IsPistolDay)
                 {
                     if (_record.IsIncluded)
                         return true;

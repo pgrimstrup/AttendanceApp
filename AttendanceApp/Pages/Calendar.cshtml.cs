@@ -10,8 +10,8 @@ namespace Attendance.Pages
     {
         readonly ICalendarManager CalendarManager;
 
-        public List<SpecialEventViewModel> SpecialEvents { get; }
-        public List<RecurringEventViewModel> RecurringEvents { get; }
+        //public List<SpecialEventViewModel> SpecialEvents { get; }
+        //public List<RecurringEventViewModel> RecurringEvents { get; }
 
         public List<CalendarWeekViewModel> Weeks { get;  }
 
@@ -27,8 +27,8 @@ namespace Attendance.Pages
         public CalendarModel(ICalendarManager calendarManager)
         {
             CalendarManager = calendarManager;
-            SpecialEvents = new ();
-            RecurringEvents = new ();
+            //SpecialEvents = new ();
+            //RecurringEvents = new ();
             Weeks = new();
         }
 
@@ -52,97 +52,97 @@ namespace Attendance.Pages
                 Weeks.Add(week);
             }
 
-            var specialEvents = await CalendarManager.GetSpecialEvents();
-            SpecialEvents.AddRange(specialEvents.Select(e => new SpecialEventViewModel(e)));
+            //var specialEvents = await CalendarManager.GetSpecialEvents();
+            //SpecialEvents.AddRange(specialEvents.Select(e => new SpecialEventViewModel(e)));
 
-            var recurringEvents = await CalendarManager.GetRecurringEvents();
-            RecurringEvents.AddRange(recurringEvents.Select(e => new RecurringEventViewModel(e)));
+            //var recurringEvents = await CalendarManager.GetRecurringEvents();
+            //RecurringEvents.AddRange(recurringEvents.Select(e => new RecurringEventViewModel(e)));
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAddSpecialEventAsync(DateTime startDate, DateTime endDate, string? description)
-        {
-            if (startDate > endDate)
-            {
-                ModelState.AddModelError(string.Empty, "Start date cannot be after the end date.");
-                return Page();
-            }
+        //public async Task<IActionResult> OnPostAddSpecialEventAsync(DateTime startDate, DateTime endDate, string? description)
+        //{
+        //    if (startDate > endDate)
+        //    {
+        //        ModelState.AddModelError(string.Empty, "Start date cannot be after the end date.");
+        //        return Page();
+        //    }
 
-            var specialEvent = new SpecialEvent {
-                StartDate = DateOnly.FromDateTime(startDate),
-                EndDate = DateOnly.FromDateTime(endDate),
-                Description = description
-            };
+        //    var specialEvent = new SpecialEvent {
+        //        StartDate = DateOnly.FromDateTime(startDate),
+        //        EndDate = DateOnly.FromDateTime(endDate),
+        //        Description = description
+        //    };
 
-            var result = await CalendarManager.AddOrUpdateSpecialEvent(specialEvent);
-            if (!result)
-                ModelState.AddModelError(string.Empty, "Failed to add the special event.");
+        //    var result = await CalendarManager.AddOrUpdateSpecialEvent(specialEvent);
+        //    if (!result)
+        //        ModelState.AddModelError(string.Empty, "Failed to add the special event.");
 
-            if(ModelState.IsValid)
-                return RedirectToPage(new { year = Year, month = Month});
-            return Page();
-        }
+        //    if(ModelState.IsValid)
+        //        return RedirectToPage(new { year = Year, month = Month});
+        //    return Page();
+        //}
 
-        public async Task<IActionResult> OnPostAddRecurringEventAsync(DateTime startDate, EventFrequency frequency, DayOfWeek dayOfWeek, string? description)
-        {
-            var recurringEvent = new RecurringEvent {
-                StartDate = DateOnly.FromDateTime(startDate),
-                Frequency = frequency,
-                DayOfWeek = dayOfWeek,
-                Description = description
-            };
+        //public async Task<IActionResult> OnPostAddRecurringEventAsync(DateTime startDate, EventFrequency frequency, DayOfWeek dayOfWeek, string? description)
+        //{
+        //    var recurringEvent = new RecurringEvent {
+        //        StartDate = DateOnly.FromDateTime(startDate),
+        //        Frequency = frequency,
+        //        DayOfWeek = dayOfWeek,
+        //        Description = description
+        //    };
 
-            var result = await CalendarManager.AddOrUpdateRecurringEvent(recurringEvent);
-            if (!result)
-                ModelState.AddModelError(string.Empty, "Failed to add the recurring event.");
+        //    var result = await CalendarManager.AddOrUpdateRecurringEvent(recurringEvent);
+        //    if (!result)
+        //        ModelState.AddModelError(string.Empty, "Failed to add the recurring event.");
 
-            if (ModelState.IsValid)
-                return RedirectToPage(new { year = Year, month = Month });
-            return Page();
-        }
+        //    if (ModelState.IsValid)
+        //        return RedirectToPage(new { year = Year, month = Month });
+        //    return Page();
+        //}
 
-        public async Task<IActionResult> OnPostDeleteSpecialEventAsync(int id)
-        {
-            var success = await CalendarManager.DeleteSpecialEvent(id);
-            if(!success)
-                ModelState.AddModelError(string.Empty, "Failed to delete the special event.");
+        //public async Task<IActionResult> OnPostDeleteSpecialEventAsync(int id)
+        //{
+        //    var success = await CalendarManager.DeleteSpecialEvent(id);
+        //    if(!success)
+        //        ModelState.AddModelError(string.Empty, "Failed to delete the special event.");
 
-            if (ModelState.IsValid)
-                return RedirectToPage(new { year = Year, month = Month });
-            return Page();
-        }
+        //    if (ModelState.IsValid)
+        //        return RedirectToPage(new { year = Year, month = Month });
+        //    return Page();
+        //}
 
-        public async Task<IActionResult> OnPostDeleteRecurringEventAsync(int id)
-        {
-            var success = await CalendarManager.DeleteRecurringEvent(id);
-            if(!success)
-                ModelState.AddModelError(string.Empty, "Failed to delete the recurring event.");    
+        //public async Task<IActionResult> OnPostDeleteRecurringEventAsync(int id)
+        //{
+        //    var success = await CalendarManager.DeleteRecurringEvent(id);
+        //    if(!success)
+        //        ModelState.AddModelError(string.Empty, "Failed to delete the recurring event.");    
 
-            if (ModelState.IsValid)
-                return RedirectToPage(new { year = Year, month = Month });
-            return Page();
-        }
+        //    if (ModelState.IsValid)
+        //        return RedirectToPage(new { year = Year, month = Month });
+        //    return Page();
+        //}
 
-        public async Task<IActionResult> OnPostEndRecurringEventAsync(int id, DateTime endDate)
-        {
-            var success = await CalendarManager.EndRecurringEvent(id, endDate);
-            if (!success)
-                ModelState.AddModelError(string.Empty, "Failed to delete the recurring event.");
+        //public async Task<IActionResult> OnPostEndRecurringEventAsync(int id, DateTime endDate)
+        //{
+        //    var success = await CalendarManager.EndRecurringEvent(id, endDate);
+        //    if (!success)
+        //        ModelState.AddModelError(string.Empty, "Failed to delete the recurring event.");
 
-            if (ModelState.IsValid)
-                return RedirectToPage(new { year = Year, month = Month });
-            return Page();
-        }
+        //    if (ModelState.IsValid)
+        //        return RedirectToPage(new { year = Year, month = Month });
+        //    return Page();
+        //}
 
-        public async Task<IActionResult> OnPostResumeRecurringEventAsync(int id)
-        {
-            var success = await CalendarManager.ResumeRecurringEvent(id);
-            if (!success)
-                ModelState.AddModelError(string.Empty, "Failed to delete the recurring event.");
+        //public async Task<IActionResult> OnPostResumeRecurringEventAsync(int id)
+        //{
+        //    var success = await CalendarManager.ResumeRecurringEvent(id);
+        //    if (!success)
+        //        ModelState.AddModelError(string.Empty, "Failed to delete the recurring event.");
 
-            if (ModelState.IsValid)
-                return RedirectToPage(new { year = Year, month = Month });
-            return Page();
-        }
+        //    if (ModelState.IsValid)
+        //        return RedirectToPage(new { year = Year, month = Month });
+        //    return Page();
+        //}
     }
 }

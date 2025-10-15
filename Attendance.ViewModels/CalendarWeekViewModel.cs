@@ -18,8 +18,6 @@ public class CalendarDayViewModel
     int _year;
     int _month;
     public DateTime Date => _day.Date.ToDateTime(new TimeOnly(0, 0));
-    public int SpecialEvents => _day.SpecialEvents;
-    public int RecurringEvents => _day.RecurringEvents;
 
     public CalendarDayViewModel(int year, int month, CalendarDay day)
     {
@@ -29,43 +27,23 @@ public class CalendarDayViewModel
     }
 
 
-    public string Description
-    {
-        get
-        {
-            string desc = "";
-            if (SpecialEvents > 0)
-            {
-                desc += $"{SpecialEvents} special event" + (SpecialEvents > 1 ? "s" : "");
-                if (RecurringEvents > 0)
-                    desc += " and ";
-            }
-
-            if (RecurringEvents > 0)
-                desc += $"{RecurringEvents} recurring event" + (RecurringEvents > 1 ? "s" : "");
-
-            if (_day.CancelEvents)
-                desc += " (cancelled)";
-
-            return desc;
-        }
-    }
-
     public bool IsChecked
     {
-        get => (SpecialEvents > 0 || RecurringEvents > 0) && !_day.CancelEvents;
+        get => _day.IsPistolDay && !_day.IsClosedDay;
         set
         {
-            _day.CancelEvents = !value;
+            _day.IsClosedDay = !value;
         }
     }
 
     public bool IsDisabled
     {
-        get => SpecialEvents == 0 && RecurringEvents == 0;
+        get => _day.Events.Count == 0 || !_day.IsPistolDay;
     }
 
-    public bool IsCancelled => _day.CancelEvents;
+    public bool IsClosed => _day.IsClosedDay;
 
     public bool IsCurrentMonth => Date.Year == _year && Date.Month == _month;
+
+    public IEnumerable<CalendarEntry> Events => _day.Events;
 }

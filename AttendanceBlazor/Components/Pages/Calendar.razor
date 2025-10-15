@@ -16,15 +16,15 @@
 	public List<string> RecurringEventErrors = new();
 	public List<string> SpecialEventErrors = new();
 
-	RecurringEvent NewRecurringEvent { get; set; } = new();
-	SpecialEvent NewSpecialEvent { get; set; } = new();
+	// RecurringEvent NewRecurringEvent { get; set; } = new();
+	// SpecialEvent NewSpecialEvent { get; set; } = new();
 
 	string GetCellStyle(CalendarDayViewModel day)
 	{
 		if (!day.IsCurrentMonth)
 			return "other-month";
 
-		if (day.IsCancelled)
+		if (day.IsClosed)
 			return "bg-warning bg-opacity-25";
 
 		if (day.IsChecked)
@@ -59,12 +59,6 @@
 			var week = new CalendarWeekViewModel(model.Year, model.Month, days.Skip(i).Take(7).ToArray());
 			model.Weeks.Add(week);
 		}
-
-		var specialEvents = await CalendarManager.GetSpecialEvents();
-		model.SpecialEvents.AddRange(specialEvents.Select(e => new SpecialEventViewModel(e)));
-
-		var recurringEvents = await CalendarManager.GetRecurringEvents();
-		model.RecurringEvents.AddRange(recurringEvents.Select(e => new RecurringEventViewModel(e)));
 		return model;
 	}
 
@@ -78,42 +72,6 @@
 		}
 	}
 
-	private async Task SaveNewRecurringEvent()
-	{
-		await CalendarManager.AddOrUpdateRecurringEvent(NewRecurringEvent);
-		Model = await LoadModelData(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
-		NewRecurringEvent = new();
-	}
-
-	private async Task EndRecurringSeries(int id, DateTime endDate)
-	{
-		await CalendarManager.EndRecurringEvent(id, endDate);
-		Model = await LoadModelData(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
-	}
-
-	private async Task ResumeRecurringSeries(int id)
-	{
-		await CalendarManager.ResumeRecurringEvent(id);
-		Model = await LoadModelData(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
-	}
-
-	private async Task DeleteRecurringSeries(int id)
-	{
-		await CalendarManager.DeleteRecurringEvent(id);
-		Model = await LoadModelData(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
-	}
-
-	private async Task SaveNewSpecialEvent()
-	{
-		await CalendarManager.AddOrUpdateSpecialEvent(NewSpecialEvent);
-		Model = await LoadModelData(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
-	}
-
-	private async Task DeleteSpecialEvent(int id)
-	{
-		await CalendarManager.DeleteSpecialEvent(id);
-		Model = await LoadModelData(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
-	}
 }
 
 <div>
@@ -148,174 +106,21 @@
 					{
 						<td>
 							<div class="day-cell @GetCellStyle(day)">
-								<div class="day-number float-start m-2">@day.Date.Day</div>
-								<div class="float-end m-2">
-									<input type="checkbox" class="form-check-input" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleCancellation(day.Date)" />
+								<div style="height:1.4em" class="m-2">
+									<div class="day-number float-start">@day.Date.Day</div>
+									<input type="checkbox" class="form-check-input float-end" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleCancellation(day.Date)" />
 								</div>
-								<div class="mt-5">@day.Description</div>
+								@foreach(var ev in day.Events.Where(e => e.IsPistolEvent))
+								{
+									<div class="text-start" style="font-weight:bold; overflow:hidden; padding: 1px 4px">@ev.Name</div>
+								}
+								@foreach (var ev in day.Events.Where(e => !e.IsPistolEvent))
+								{
+									<div class="text-start" style="overflow:hidden; padding: 1px 4px">@ev.Name</div>
+								}
 							</div>
 						</td>
 					}
-				</tr>
-			}
-		</tbody>
-	</table>
-</div>
-
-<hr />
-<h2>Special Events</h2>
-<div class="row">
-	<div class="col-3">
-		<label class="form-label">Start Date</label>
-		<input type="date" class="form-control" name="startDate" @bind="NewSpecialEvent.StartDate" />
-	</div>
-	<div class="col-3">
-		<label class="form-label">End Date</label>
-		<input type="date" class="form-control" name="endDate" @bind="NewSpecialEvent.EndDate" />
-	</div>
-	<div class="col-3">
-	</div>
-	<div class="col-3">
-	</div>
-	<div class="col-9 my-1">
-		<input type="text" class="form-control" maxlength="200" placeholder="Description" name="description" @bind="NewSpecialEvent.Description" />
-	</div>
-	<div class="col-3 my-1">
-		<button type="submit" class="btn btn-primary" @onclick="async () => await SaveNewSpecialEvent()">Add Special Event</button>
-	</div>
-</div>
-@if (SpecialEventErrors.Count > 0)
-{
-	<div class="alert alert-danger mt-3">
-		@foreach (var error in SpecialEventErrors)
-		{
-			<p>@error</p>
-		}
-	</div>
-}
-
-<div class="table-responsive">
-	<table class="table table-bordered text-start">
-		<thead>
-			<tr>
-				<th>Date of Upcoming Events</th>
-				<th>Description</th>
-				<th></th>
-			</tr>
-		</thead>
-		<tbody>
-			@if (Model.SpecialEvents.Count == 0)
-			{
-				<tr>
-					<td colspan="3">
-						<div class="alert-warning p-4">
-							There are no upcoming Special Events in the calendar
-						</div>
-					</td>
-				</tr>
-			}
-			@foreach (var se in Model.SpecialEvents)
-			{
-				<tr>
-					<td>@se.Duration</td>
-					<td>@se.Description</td>
-					<td width="1px">
-						<button class="btn btn-sm btn-danger" @onclick="async () => await DeleteSpecialEvent(se.Id)">Delete</button>
-					</td>
-				</tr>
-			}
-		</tbody>
-	</table>
-</div>
-
-<hr />
-<h2>Recurring Events</h2>
-<div class="row">
-	<div class="col-3">
-		<label class="form-label">Frequency</label>
-		<select class="form-select" name="frequency" @bind="NewRecurringEvent.Frequency">
-			<option value="@EventFrequency.EveryWeek">Every week of the month</option>
-			<option value="@EventFrequency.FirstWeek">Every 1st week of the month</option>
-			<option value="@EventFrequency.SecondWeek">Every 2nd week of the month</option>
-			<option value="@EventFrequency.ThirdWeek">Every 3rd week of the month</option>
-			<option value="@EventFrequency.FourthWeek">Every 4th week of the month</option>
-		</select>
-	</div>
-	<div class="col-3">
-		<label class="form-label">Day of Week</label>
-		<select class="form-select" name="dayOfWeek" @bind="NewRecurringEvent.DayOfWeek">
-			<option value="@DayOfWeek.Monday">On Monday</option>
-			<option value="@DayOfWeek.Tuesday">On Tuesday</option>
-			<option value="@DayOfWeek.Wednesday">On Wednesday</option>
-			<option value="@DayOfWeek.Thursday">On Thursday</option>
-			<option value="@DayOfWeek.Friday">On Friday</option>
-			<option value="@DayOfWeek.Saturday">On Saturday</option>
-			<option value="@DayOfWeek.Sunday">On Sunday</option>
-		</select>
-	</div>
-	<div class="col-3">
-		<label class="form-label">Start Date</label>
-		<input type="date" class="form-control" name="startDate" @bind="NewRecurringEvent.StartDate" />
-	</div>
-	<div class="col-3">
-	</div>
-	<div class="col-9 my-1">
-		<input type="text" class="form-control" maxlength="200" placeholder="Description" name="description" @bind="NewRecurringEvent.Description" />
-	</div>
-	<div class="col-3 my-1">
-		<button class="btn btn-primary" @onclick="async () => await SaveNewRecurringEvent()">Add Recurring Event</button>
-	</div>
-</div>
-@if (RecurringEventErrors.Count > 0)
-{
-	<div class="alert alert-danger mt-3">
-		@foreach (var error in RecurringEventErrors)
-		{
-			<p>@error</p>
-		}
-	</div>
-}
-
-<div class="table-responsive">
-	<table class="table table-bordered text-start">
-		<thead>
-			<tr>
-				<th>Frequency of Upcoming Events</th>
-				<th>Description</th>
-				<th>End Recurring Series</th>
-				<th></th>
-			</tr>
-		</thead>
-		<tbody>
-			@if (Model.RecurringEvents.Count == 0)
-			{
-				<tr>
-					<td colspan="4">
-						<div class="alert-warning p-4">
-							There are no Recurring Events for future dates in the calendar
-						</div>
-					</td>
-				</tr>
-			}
-			@foreach (var re in Model.RecurringEvents)
-			{
-				<tr>
-					<td>@re.FrequencyDescription</td>
-					<td>@re.Description</td>
-					<td width="1px" style="white-space:nowrap">
-						@if (re.IsDeleted)
-						{
-							<button class="btn btn-sm btn-success" @onclick="async () => await ResumeRecurringSeries(re.Id)">Resume</button>
-						}
-						else
-						{
-							<input type="date" name="endDate" class="form-control" style="display:unset; width:unset" @bind="re.EndDate" />
-							<button class="btn btn-sm btn-warning" @onclick="async () => await EndRecurringSeries(re.Id, re.EndDate)">End Series</button>
-						}
-					</td>
-					<td width="1px" style="white-space:nowrap">
-						<button class="btn btn-sm btn-danger" @onclick="async () => await DeleteRecurringSeries(re.Id)">Delete</button>
-					</td>
 				</tr>
 			}
 		</tbody>

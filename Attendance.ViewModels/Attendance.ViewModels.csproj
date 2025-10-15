@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="RecurringEventViewModel.cs" />
+    <Compile Remove="SpecialEventViewModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Attendance.Data\Attendance.Data.csproj" />
   </ItemGroup>
 

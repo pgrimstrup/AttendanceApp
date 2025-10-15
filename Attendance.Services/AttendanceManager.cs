@@ -49,9 +49,9 @@ Ranges(RangeTime, RangeCardNumber, RangePersonId) AS
 	  AND EventTime >= @StartDate AND EventTime < @EndDate
 	GROUP BY CONVERT(DATE, EventTime), CardNumber, PersonId
 ),
-Dates(EventDate, IsMatchDay) AS 
+Dates(EventDate, IsPistolDay, IsClosedDay) AS 
 (
-	SELECT Date, CASE WHEN RecurringEvents + SpecialEvents > 0 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END
+	SELECT Date, IsPistolDay, IsClosedDay
 	FROM CalendarDay
 	WHERE Date >= @StartDate AND Date < @EndDate
 ),
@@ -62,8 +62,9 @@ Overrides(PersonId, EventDate, IsExcluded, IsIncluded) AS
 	WHERE EventDate >= @StartDate AND EventDate < @EndDate
 )
 SELECT p.PersonId, p.FirstName, p.LastName, p.CardNumber RegisteredCardNumber, 
-	p.FALNumber, p.PNZNumber, p.Sections, Dates.EventDate, Dates.IsMatchDay, 
-	COALESCE(Overrides.IsExcluded, CAST(0 AS BIT)) IsExcluded, COALESCE(Overrides.IsIncluded, CAST(0 AS BIT)) IsIncluded,
+	p.FALNumber, p.PNZNumber, p.Sections, Dates.EventDate, Dates.IsPistolDay, Dates.IsClosedDay,
+	COALESCE(Overrides.IsExcluded, CAST(0 AS BIT)) IsExcluded, 
+	COALESCE(Overrides.IsIncluded, CAST(0 AS BIT)) IsIncluded,
 	Entries.EntryTime, Ranges.RangeTime, Exits.ExitTime,
 	COALESCE(Entries.EntryCardNumber, Ranges.RangeCardNumber, Exits.ExitCardNumber) SwipedCardNumber,
 	COALESCE(Entries.EntryPersonId, Ranges.RangePersonId, Exits.ExitPersonId) SwipedPersonId
@@ -73,7 +74,7 @@ left outer join Overrides on Overrides.PersonId = p.PersonId AND Overrides.Event
 LEFT OUTER JOIN Entries on Entries.EntryPersonId = p.PersonId AND CONVERT(DATE, Entries.EntryTime) = Dates.EventDate
 LEFT OUTER JOIN Exits on Exits.ExitPersonId = p.PersonId AND CONVERT(DATE, ExitTime) = Dates.EventDate
 LEFT OUTER JOIN Ranges on Ranges.RangePersonId = p.PersonId AND CONVERT(DATE, RangeTime) = Dates.EventDate
-WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL OR Dates.IsMatchDay = 1)
+WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL OR Dates.IsPistolDay = 1)
 ";
 
 	readonly IServiceProvider _services;
@@ -151,8 +152,8 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 		var summaries = new Dictionary<string, AttendanceSummaryRecord>(StringComparer.OrdinalIgnoreCase);
 		foreach(var record in attendance)
 		{
-            // Need to have a valid PNZ number and be in a pistol section to count
-            if (string.IsNullOrWhiteSpace(record.PNZNumber) || !record.IsPistolSection)
+            // Need to have a valid PNZ number to count
+            if (string.IsNullOrWhiteSpace(record.PNZNumber))
 				continue;
 
 			if(!summaries.TryGetValue(record.PNZNumber, out var summary))
@@ -169,7 +170,7 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
             // Need to have scanned in at the range on a match day to count.
             // Also count away matches, which are marked as match days but don't have range scans.
             // Can be manually overriden by IsIncluded/IsExcluded.
-            if (record.IsMatchDay && !record.IsExcluded)
+            if (record.IsPistolDay && !record.IsExcluded)
 			{
 				if(record.RangeTime.HasValue || record.IsIncluded || record.IsAwayEvent)
 					summary.Count++;

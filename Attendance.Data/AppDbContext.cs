@@ -4,9 +4,8 @@ namespace Attendance.Data;
 
 public class AppDbContext : DbContext
 {
+    public virtual DbSet<CalendarCategory> CalendarCategories { get; set; } = null!;
     public virtual DbSet<CalendarDay> CalendarDays { get; set; } = null!;
-    public virtual DbSet<SpecialEvent> SpecialEvents { get; set; } = null!;
-    public virtual DbSet<RecurringEvent> RecurringEvents { get; set; } = null!;
     public virtual DbSet<AwayEvent> AwayEvents { get; set; } = null!;
     public virtual DbSet<OverrideEvent> OverrideEvents { get; set; } = null!;
     public virtual DbSet<SportyImport> SportyImports { get; set; } = null!;
@@ -82,6 +81,13 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
+        builder.Entity<CalendarCategory>(e => {
+            e.ToTable("CalendarCategory");
+            e.HasKey(e => e.Name);
+            e.Property(e => e.Name).HasMaxLength(200);
+            e.Property(e => e.Color).HasMaxLength(50);
+        });
+
         builder.Entity<CalendarDay>(e => {
             e.ToTable("CalendarDay");
             e.HasKey(e => e.Date);
@@ -108,17 +114,17 @@ public class AppDbContext : DbContext
             e.Property(e => e.CardInfo2).HasMaxLength(100);
         });
 
-        builder.Entity<SpecialEvent>(e => {
-            e.ToTable("SpecialEvent");
-            e.HasKey(e => e.Id);
-            e.Property(e => e.Description).HasMaxLength(200);
-        });
+        //builder.Entity<SpecialEvent>(e => {
+        //    e.ToTable("SpecialEvent");
+        //    e.HasKey(e => e.Id);
+        //    e.Property(e => e.Description).HasMaxLength(200);
+        //});
 
-        builder.Entity<RecurringEvent>(e => {
-            e.ToTable("RecurringEvent");
-            e.HasKey(e => e.Id);
-            e.Property(e => e.Description).HasMaxLength(200);
-        });
+        //builder.Entity<RecurringEvent>(e => {
+        //    e.ToTable("RecurringEvent");
+        //    e.HasKey(e => e.Id);
+        //    e.Property(e => e.Description).HasMaxLength(200);
+        //});
 
         builder.Entity<AwayEvent>(e => {
             e.ToTable("AwayEvent");

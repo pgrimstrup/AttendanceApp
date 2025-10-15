@@ -11,7 +11,7 @@
 
 		if (day.IsChecked)
 		{
-			if (day.IsCancelled)
+			if (day.IsClosed)
 				return "bg-warning bg-opacity-25";
 			else
 				return "bg-success bg-opacity-25";
@@ -75,7 +75,7 @@
 							<div class="day-cell @GetCellStyle(day)">
 								<div class="day-number float-start m-2">@day.Date.Day</div>
 								<div class="float-end m-2"><input type="checkbox" class="form-check-input" asp-for="@day.IsChecked" /></div>
-								<div class="mt-5">@day.Description</div>
+								<div class="mt-5"></div>
 							</div>
 						</td>
 					}
@@ -85,7 +85,7 @@
 	</table>
 </div>
 
-<hr />
+@* <hr />
 <h2>Special Events</h2>
 <form method="post" asp-page-handler="AddSpecialEvent">
 	<div class="row">
@@ -252,3 +252,4 @@
 		}
 	</table>
 </div>
+ *@

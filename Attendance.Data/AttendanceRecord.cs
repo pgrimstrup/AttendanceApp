@@ -10,10 +10,13 @@ public record AttendanceRecord
     public string PNZNumber { get; set; } = string.Empty;
     public SectionTags Sections { get; set; } 
     public DateTime EventDate { get; set; }
-    public bool IsMatchDay { get; set; }
+
+    public bool IsPistolDay { get; set; }
+    public bool IsClosedDay { get; set; }
     public bool IsAwayEvent { get; set; }
     public bool IsExcluded { get; set; }
     public bool IsIncluded { get; set; }
+
     public DateTime? EntryTime { get; set; }
     public DateTime? RangeTime { get; set; }
     public DateTime? ExitTime { get; set; }
@@ -21,11 +24,5 @@ public record AttendanceRecord
     public string? AwayEventLocation { get; set; }
     public string SwipedCardNumber { get; set; } = string.Empty;
     public int SwipedPersonId { get; set; }
-
-    public bool IsPistolSection => 
-        Sections.HasFlag(SectionTags.CAS) || 
-        Sections.HasFlag(SectionTags.IPSC) || 
-        Sections.HasFlag(SectionTags.ISSF) || 
-        Sections.HasFlag(SectionTags.MultiGun);
 
 }

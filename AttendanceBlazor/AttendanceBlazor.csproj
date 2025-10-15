@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ical.Net" Version="5.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Attendance.Data\Attendance.Data.csproj" />
     <ProjectReference Include="..\Attendance.Services\Attendance.Services.csproj" />
     <ProjectReference Include="..\Attendance.ViewModels\Attendance.ViewModels.csproj" />

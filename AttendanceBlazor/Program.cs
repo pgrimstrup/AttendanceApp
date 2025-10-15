@@ -1,7 +1,18 @@
+using System.Globalization;
 using Attendance.Data;
 using Attendance.Services;
 using AttendanceBlazor.Components;
+using AttendanceBlazor.HostedServices;
 using Microsoft.EntityFrameworkCore;
+
+//#if DEBUG
+//var nz = CultureInfo.GetCultureInfo("en-NZ");
+//CultureInfo.DefaultThreadCurrentCulture = nz;
+//CultureInfo.DefaultThreadCurrentUICulture = nz;
+//// If you still use explicit thread cultures:
+//Thread.CurrentThread.CurrentCulture = nz;
+//Thread.CurrentThread.CurrentUICulture = nz;
+//#endif
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,9 +28,16 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddScoped<IEntraPassImporter, EntraPassImporter>();
 builder.Services.AddScoped<ISportyRegistrationImporter, SportyRegistrationImporter>();
+builder.Services.AddScoped<ICalendarImporter, CalendarImporter>();
 
 builder.Services.AddSingleton<ICalendarManager, CalendarManager>();
 builder.Services.AddSingleton<IAttendanceManager, AttendanceManager>();
+
+builder.Services.AddOptions<CalendarImporterOptions>()
+    .Bind(builder.Configuration.GetSection(CalendarImporterOptions.SectionName))
+    .ValidateDataAnnotations();
+
+builder.Services.AddHostedService<CalendarImportService>();
 
 var app = builder.Build();
 
