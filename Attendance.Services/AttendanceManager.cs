@@ -15,6 +15,10 @@ public interface IAttendanceManager
 
 	Task IncludedAsync(int personId, DateOnly eventDate, bool isOnRange);
 	Task ExcludedAsync(int personId, DateOnly eventDate, bool isOnRange);
+
+	Task AddAwayEvent(string pnzNumber, AwayEvent awayEvent);
+    Task AddAwayEvent(int personId, AwayEvent awayEvent);
+	Task DeleteAwayEvent(int personId, DateOnly date, string location, string eventName);
 }
 
 
@@ -60,11 +64,19 @@ Overrides(PersonId, EventDate, IsExcluded, IsIncluded) AS
 	SELECT PersonId, EventDate, IsExcluded, IsIncluded
 	FROM OverrideEvent 
 	WHERE EventDate >= @StartDate AND EventDate < @EndDate
+),
+Away(PersonId, EventDate, IsAwayEvent, AwayLocation, AwayEventName) AS 
+(
+	SELECT PersonId, EventDate, CAST(1 AS BIT), AwayEvent.Location, AwayEvent.EventName
+	FROM Dates
+	CROSS JOIN AwayEvent
+	WHERE Dates.EventDate >= AwayEvent.StartDate AND Dates.EventDate <= AwayEvent.EndDate
 )
 SELECT p.PersonId, p.FirstName, p.LastName, p.CardNumber RegisteredCardNumber, 
 	p.FALNumber, p.PNZNumber, p.Sections, Dates.EventDate, Dates.IsPistolDay, Dates.IsClosedDay,
 	COALESCE(Overrides.IsExcluded, CAST(0 AS BIT)) IsExcluded, 
 	COALESCE(Overrides.IsIncluded, CAST(0 AS BIT)) IsIncluded,
+	COALESCE(Away.IsAwayEvent, CAST(0 AS BIT)) IsAwayEvent, Away.AwayLocation, Away.AwayEventName,
 	Entries.EntryTime, Ranges.RangeTime, Exits.ExitTime,
 	COALESCE(Entries.EntryCardNumber, Ranges.RangeCardNumber, Exits.ExitCardNumber) SwipedCardNumber,
 	COALESCE(Entries.EntryPersonId, Ranges.RangePersonId, Exits.ExitPersonId) SwipedPersonId
@@ -74,7 +86,8 @@ left outer join Overrides on Overrides.PersonId = p.PersonId AND Overrides.Event
 LEFT OUTER JOIN Entries on Entries.EntryPersonId = p.PersonId AND CONVERT(DATE, Entries.EntryTime) = Dates.EventDate
 LEFT OUTER JOIN Exits on Exits.ExitPersonId = p.PersonId AND CONVERT(DATE, ExitTime) = Dates.EventDate
 LEFT OUTER JOIN Ranges on Ranges.RangePersonId = p.PersonId AND CONVERT(DATE, RangeTime) = Dates.EventDate
-WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL OR Dates.IsPistolDay = 1)
+LEFT OUTER JOIN Away on Away.PersonId = p.PersonId AND Dates.EventDate = Away.EventDate
+WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL OR Dates.IsPistolDay = 1 OR IsAwayEvent = 1)
 ";
 
 	readonly IServiceProvider _services;
@@ -251,4 +264,44 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
         FlushCache();
     }
 
+	public async Task AddAwayEvent(string pnzNumber, AwayEvent awayEvent)
+	{
+		using var scope = _services.CreateScope();
+		var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+		// Find the person by PNZ number
+		var person = await context.SportyImports.FirstOrDefaultAsync(i => i.PNZNumber == pnzNumber);
+		if (person == null)
+			throw new ArgumentException($"No person found with PNZ number {pnzNumber}");
+
+		awayEvent.PersonId = person.PersonId;
+        await context.AwayEvents.AddAsync(awayEvent);
+		await context.SaveChangesAsync();
+		FlushCache();
+    }
+
+	public async Task AddAwayEvent(int personId, AwayEvent awayEvent)
+	{
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        awayEvent.PersonId = personId;
+        await context.AwayEvents.AddAsync(awayEvent);
+        await context.SaveChangesAsync();
+        FlushCache();
+    }
+
+    public async Task DeleteAwayEvent(int personId, DateOnly date, string location, string eventName)
+	{
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+		var away = await context.AwayEvents.FirstOrDefaultAsync(a => a.PersonId == personId && a.StartDate <= date && a.EndDate >= date && a.Location == location && a.EventName == eventName);
+		if(away != null)
+		{
+			context.AwayEvents.Remove(away);
+			await context.SaveChangesAsync();
+			FlushCache();
+        }
+    }
 }

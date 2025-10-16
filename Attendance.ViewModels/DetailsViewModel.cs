@@ -34,7 +34,7 @@ public class DetailsViewModel
 
     public DateTime LastUpdated => _lastUpdated;
 
-    public int TotalMatchDays => Attendance.Count(a => a.IsPistolDay && !a.IsClosedDay);
+    public int TotalMatchDays => Attendance.Count(a => (a.IsPistolDay && !a.IsClosedDay) || a.IsAwayEvent);
     public int TotalEventsCounted => Attendance.Count(a => a.IsCounted);
 
     public List<AttendanceViewModel> Attendance { get; }

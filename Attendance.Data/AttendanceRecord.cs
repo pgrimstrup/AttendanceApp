@@ -16,12 +16,12 @@ public record AttendanceRecord
     public bool IsAwayEvent { get; set; }
     public bool IsExcluded { get; set; }
     public bool IsIncluded { get; set; }
+    public string? AwayEventName { get; set; }
+    public string? AwayLocation { get; set; }
 
     public DateTime? EntryTime { get; set; }
     public DateTime? RangeTime { get; set; }
     public DateTime? ExitTime { get; set; }
-    public string? AwayEventName { get; set; }
-    public string? AwayEventLocation { get; set; }
     public string SwipedCardNumber { get; set; } = string.Empty;
     public int SwipedPersonId { get; set; }
 
