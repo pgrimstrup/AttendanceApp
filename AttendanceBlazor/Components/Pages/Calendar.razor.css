@@ -1,5 +1,5 @@
 ﻿.day-cell {
-    height: 125px;
+    min-height: 125px;
     overflow: hidden;
     background: #f9f9f9;
 }
