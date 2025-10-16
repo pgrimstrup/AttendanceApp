@@ -24,35 +24,19 @@ public class AttendanceViewModel
     public string RangeTime => _record.RangeTime.HasValue ? _record.RangeTime.Value.ToString("hh:mm tt") : "";
     public string ExitTime => _record.ExitTime.HasValue ? _record.ExitTime.Value.ToString("hh:mm tt") : "n/a";
 
+    /// <summary>
+    /// The overall determination if this attendance record counts toward attendance requirements.
+    /// If this is false, then the record is excluded for some reason (e.g. closed day, excluded, no matches, 
+    /// not on range, not included, etc)
+    /// </summary>
+    public bool IsCounted => _record.IsCounted;
+
     public bool IsPistolDay => _record.IsPistolDay;
     public bool IsClosedDay => _record.IsClosedDay;
     public bool IsAwayEvent => _record.IsAwayEvent;
     public bool IsExcluded => _record.IsExcluded;
     public bool IsIncluded => _record.IsIncluded;
     public bool IsOnRange => _record.RangeTime.HasValue;
-
-    public bool IsCounted
-    {
-        get
-        {
-            if (IsAwayEvent)
-                return true;
-
-            if (!IsClosedDay && IsPistolDay)
-            {
-                // Check for overrides first
-                if (_record.IsIncluded)
-                    return true;
-
-                if (_record.IsExcluded)
-                    return false;
-
-                return _record.RangeTime.HasValue;
-            }
-
-            return false;
-        }
-    }
 
 
     public string AwayLocation => _record.AwayLocation ?? "";

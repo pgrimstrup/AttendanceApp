@@ -111,7 +111,6 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 		_keys.Clear();
     }
 
-
     public async Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers)
 	{
 		var parameters = new Dictionary<string, object?>
@@ -180,15 +179,8 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 				summaries.Add(record.PNZNumber, summary);
 			}
 
-            // Need to have scanned in at the range on a match day to count.
-            // Also count away matches, which are marked as match days but don't have range scans.
-            // Can be manually overriden by IsIncluded/IsExcluded.
-            if (record.IsPistolDay && !record.IsClosedDay && !record.IsExcluded)
-			{
-				if(record.RangeTime.HasValue || record.IsIncluded || record.IsAwayEvent)
-					summary.Count++;
-            }
-			
+			if (record.IsCounted)
+				summary.Count++;
         }
 
 		_cache.Set(key, summaries.Values.ToArray(), _cacheTimeToLive);

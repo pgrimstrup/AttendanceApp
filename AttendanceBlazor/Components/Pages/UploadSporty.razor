@@ -2,8 +2,16 @@
 @rendermode InteractiveServer
 
 @inject ISportyRegistrationImporter Importer
+@inject IJSRuntime JS
 
 <h3>Upload Sporty CSV</h3>
+
+@* <div>
+    <label class="form-check-label">
+        <InputCheckbox @bind-Value="CreateTestData" class="form-check-input"></InputCheckbox> Create Test Data from the selected file (response will be a downloadable .csv file)
+    </label>
+</div>
+ *@
 
 <div class="my-3">
 	<label for="File" class="form-label">Choose CSV File:</label>
@@ -19,6 +27,7 @@
 @code {
     public string? UploadMessage;
     public string? AlertType;
+    public bool CreateTestData { get; set; }
 
     public async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
@@ -52,7 +61,12 @@
             await stream.CopyToAsync(mem);
             mem.Position = 0;
 
-            if (await Importer.Import(mem))
+            if (CreateTestData)
+            {
+                var data = await Importer.CreateTestData(mem);
+                await JS.InvokeVoidAsync("downloadFile", "Sporty Import (Sample Data).csv", "text/csv", data);
+            }
+            else if (await Importer.Import(mem))
             {
                 AlertType = "alert-success";
                 UploadMessage = $"File '{file.Name}' uploaded and processed successfully.";

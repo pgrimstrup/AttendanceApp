@@ -25,4 +25,26 @@ public record AttendanceRecord
     public string SwipedCardNumber { get; set; } = string.Empty;
     public int SwipedPersonId { get; set; }
 
+
+    public bool IsCounted
+    {
+        get
+        {
+            if (IsAwayEvent)
+                return true;
+
+            if (!IsClosedDay && IsPistolDay)
+            {
+                // Check for overrides first
+                if (IsIncluded)
+                    return true;
+                if (IsExcluded)
+                    return false;
+
+                return RangeTime.HasValue;
+            }
+
+            return false;
+        }
+    }
 }

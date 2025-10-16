@@ -1,4 +1,5 @@
-﻿using Attendance.Data;
+﻿using System.Text;
+using Attendance.Data;
 using CSVFile;
 using Microsoft.Extensions.Logging;
 
@@ -7,6 +8,8 @@ namespace Attendance.Services;
 public interface IEntraPassImporter
 {
     Task<bool> Import(Stream stream);
+    Task<byte[]> CreateTestData(Stream stream);
+
 }
 
 public class EntraPassImporter : IEntraPassImporter
@@ -83,6 +86,56 @@ public class EntraPassImporter : IEntraPassImporter
         await _dbContext.SaveChangesAsync();
         _attendanceManager.FlushCache();
         return true;
+    }
+
+    public async Task<byte[]> CreateTestData(Stream stream)
+    {
+        using var csv = new CSVReader(stream);
+        int eventTimeIndex = csv.Headers.IndexOf("Date and Time", StringComparer.OrdinalIgnoreCase);
+        int cardNumberIndex = csv.Headers.IndexOf("Card number", StringComparer.OrdinalIgnoreCase);
+        int cardUserNameIndex = csv.Headers.IndexOf("Card user name", StringComparer.OrdinalIgnoreCase);
+        int cardInfo1Index = csv.Headers.IndexOf("CardInfo1", StringComparer.OrdinalIgnoreCase);
+        int cardInfo2Index = csv.Headers.IndexOf("CardInfo2", StringComparer.OrdinalIgnoreCase);
+        int eventMessageIndex = csv.Headers.IndexOf("Event message", StringComparer.OrdinalIgnoreCase);
+        int endDateIndex = csv.Headers.IndexOf("End date", StringComparer.OrdinalIgnoreCase);
+        int eventInfo1Index = csv.Headers.IndexOf("Event info #1", StringComparer.OrdinalIgnoreCase);
+
+        if (eventTimeIndex < 0 || cardNumberIndex < 0 || cardUserNameIndex < 0 || cardInfo1Index < 0 ||
+            cardInfo2Index < 0 || eventMessageIndex < 0 || endDateIndex < 0 || eventInfo1Index < 0)
+            return Array.Empty<byte>();
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Date and Time,Card number,Card user name,CardInfo1,CardInfo2,Event message,End date,Event info #1");
+
+        foreach (var line in csv)
+        {
+            try
+            {
+                var data = new EntraPassImport {
+                    EventTime = Convert.ToDateTime(line[eventTimeIndex]),
+                    CardNumber = line[cardNumberIndex]?.Trim() ?? "",
+                    CardUserName = line[cardUserNameIndex]?.Trim(),
+                    CardInfo1 = line[cardInfo1Index]?.Trim(),
+                    CardInfo2 = line[cardInfo2Index]?.Trim(),
+                    EventMessage = line[eventMessageIndex],
+                    ExpiryDate = Convert.ToDateTime(line[endDateIndex]),
+                    Location = line[eventInfo1Index]?.Replace("RRGC-", "")?.Trim()
+                };
+
+                // Only extract my data and replace sensitive data with garbage
+                if (data.CardInfo1 != null && data.CardInfo1.Contains("Grimstrup", StringComparison.OrdinalIgnoreCase))
+                {
+                    data.CardInfo2 = "12345"; // Fake PNZ number
+                    sb.AppendLine($"{data.EventTime:o},{data.CardNumber},{data.CardUserName},{data.CardInfo1},{data.CardInfo2},{data.EventMessage},{data.ExpiryDate:o},{data.Location}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex.Message);
+            }
+        }
+
+        return Encoding.UTF8.GetBytes(sb.ToString());
     }
 
     private void ExtractPersonDetails(EntraPassImport data)

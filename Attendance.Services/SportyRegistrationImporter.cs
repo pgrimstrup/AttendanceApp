@@ -1,4 +1,5 @@
-﻿using Attendance.Data;
+﻿using System.Text;
+using Attendance.Data;
 using CSVFile;
 using Microsoft.Extensions.Logging;
 
@@ -7,6 +8,7 @@ namespace Attendance.Services;
 public interface ISportyRegistrationImporter
 {
     Task<bool> Import(Stream stream);
+    Task<byte[]> CreateTestData(Stream stream);
 }
 
 public class SportyRegistrationImporter : ISportyRegistrationImporter
@@ -102,6 +104,15 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
         await _dbContext.SaveChangesAsync();
         _attendanceManager.FlushCache();    
         return true;
+    }
+
+    public async Task<byte[]> CreateTestData(Stream stream)
+    {
+
+        StringBuilder sb = new StringBuilder();
+
+
+        return Encoding.UTF8.GetBytes(sb.ToString());
     }
 
     private string CleanMobileNumber(string mobileNumber)
