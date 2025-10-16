@@ -12,7 +12,7 @@
 
     public DetailsViewModel Model { get; set; } = new(null, null);
 
-    public AwayEvent AwayEvent { get; set; } = new();
+    public AwayEventViewModel AwayEvent { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -79,15 +79,15 @@
 
     private void ClearAwayEvent()
     {
-        AwayEvent = new AwayEvent {
-            StartDate = DateOnly.FromDateTime(DateTime.Today),
-            EndDate = DateOnly.FromDateTime(DateTime.Today)
+        AwayEvent = new AwayEventViewModel{
+            StartDate = DateTime.Today.AddDays(-1),
+            EndDate = DateTime.Today.AddDays(-1)
         };
     }
 
     private async Task SaveAwayEvent()
     {
-        await AttendanceManager.AddAwayEvent(Model.PNZNumber, AwayEvent);
+        await AttendanceManager.AddAwayEvent(Model.PNZNumber, AwayEvent.Entity);
         ClearAwayEvent();
         Model = await LoadModelData(Model.Year, Model.PNZNumber);
         StateHasChanged();

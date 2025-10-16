@@ -12,11 +12,9 @@ public class HomeViewModel
 
     public HomeViewModel(int? year)
     {
-        Year = year ?? DateTime.Now.Year;
+        Year = year ?? (DateTime.Today.Month >= 7 ? DateTime.Today.Year : (DateTime.Today.Year - 1));
         _startTime = new DateTime(Year, 7, 1);
-        _endTime = new DateTime(Year + 1, 7, 1).AddDays(-1);
-        if(_endTime > DateTime.Today)
-            _endTime = DateTime.Today.AddDays(-1);
+        _endTime = new DateTime(Year + 1, 7, 1);
 
         _lastUpdated = DateTime.Now;
 
