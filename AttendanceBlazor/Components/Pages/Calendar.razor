@@ -99,10 +99,16 @@
         }
     }
 
-    private void OnFilterTextChanged(ChangeEventArgs args)
+    private Timer? _debounceTimer;
+
+    private void OnFilterTextChanged(ChangeEventArgs e)
     {
-        Model.FilterText = args.Value?.ToString() ?? string.Empty;
-        //StateHasChanged();
+        // Use a 300ms debounce to avoid excessive filtering while typing
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(_ => {
+            Model.FilterText = e.Value?.ToString() ?? string.Empty;
+            InvokeAsync(StateHasChanged); 
+        }, null, 300, Timeout.Infinite); 
     }
 }
 
