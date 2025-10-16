@@ -30,10 +30,6 @@ public class CalendarDayViewModel
     public bool IsChecked
     {
         get => _day.IsPistolDay && !_day.IsClosedDay;
-        set
-        {
-            _day.IsClosedDay = !value;
-        }
     }
 
     public bool IsDisabled
@@ -41,7 +37,11 @@ public class CalendarDayViewModel
         get => _day.Events.Count == 0 || !_day.IsPistolDay;
     }
 
-    public bool IsClosed => _day.IsClosedDay;
+    public bool IsClosed
+    {
+        get => _day.IsClosedDay;
+        set => _day.IsClosedDay = value;
+    }
 
     public bool IsCurrentMonth => Date.Year == _year && Date.Month == _month;
 

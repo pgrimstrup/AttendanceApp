@@ -13,8 +13,8 @@ public interface IAttendanceManager
 	Task<EntraPassImport[]> GetSwipeCardEventsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers);
 	void FlushCache();
 
-	Task IncludedAsync(int personId, DateOnly eventDate);
-	Task ExcludedAsync(int personId, DateOnly eventDate);
+	Task IncludedAsync(int personId, DateOnly eventDate, bool isOnRange);
+	Task ExcludedAsync(int personId, DateOnly eventDate, bool isOnRange);
 }
 
 
@@ -170,7 +170,7 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
             // Need to have scanned in at the range on a match day to count.
             // Also count away matches, which are marked as match days but don't have range scans.
             // Can be manually overriden by IsIncluded/IsExcluded.
-            if (record.IsPistolDay && !record.IsExcluded)
+            if (record.IsPistolDay && !record.IsClosedDay && !record.IsExcluded)
 			{
 				if(record.RangeTime.HasValue || record.IsIncluded || record.IsAwayEvent)
 					summary.Count++;
@@ -205,7 +205,7 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
         return result;
     }
 
-    public async Task IncludedAsync(int personId, DateOnly eventDate)
+    public async Task IncludedAsync(int personId, DateOnly eventDate, bool isOnRange)
 	{
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -216,22 +216,19 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 			existing = new OverrideEvent
 			{
 				PersonId = personId,
-				EventDate = eventDate,
-				IsIncluded = true,
-				IsExcluded = false
+				EventDate = eventDate
 			};
 			await context.OverrideEvents.AddAsync(existing);
         }
-        else
-        {
-			existing.IsIncluded = true;
-			existing.IsExcluded = false;
-        }
-		await context.SaveChangesAsync();
+        
+		// IsIncluded should only be set if the user was not currently on the range (ie, no RangeDate)
+		existing.IsIncluded = !isOnRange;
+        existing.IsExcluded = false;
+        await context.SaveChangesAsync();
 
         FlushCache();
 	}
-    public async Task ExcludedAsync(int personId, DateOnly eventDate)
+    public async Task ExcludedAsync(int personId, DateOnly eventDate, bool isOnRange)
 	{
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -241,18 +238,15 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
         {
             existing = new OverrideEvent {
                 PersonId = personId,
-                EventDate = eventDate,
-                IsIncluded = false,
-                IsExcluded = true
+                EventDate = eventDate
             };
             await context.OverrideEvents.AddAsync(existing);
         }
-        else
-        {
-            existing.IsIncluded = false;
-            existing.IsExcluded = true;
-        }
-        await context.SaveChangesAsync();
+
+		// IsExluded should only be set if the user was on the range (ie, has a RangeDate)
+        existing.IsIncluded = false;
+        existing.IsExcluded = isOnRange;
+       await context.SaveChangesAsync();
 
         FlushCache();
     }

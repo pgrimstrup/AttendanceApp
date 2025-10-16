@@ -1,10 +1,13 @@
-﻿namespace Attendance.ViewModels;
+﻿using Attendance.Data;
+
+namespace Attendance.ViewModels;
 
 public class CalendarViewModel
 {
     public int Year { get; set; }
     public int Month { get; set; }
 
+    public List<CalendarCategoryViewModel> Categories { get; } = new();
     public List<CalendarWeekViewModel> Weeks { get; } = new();
 
     public DateTime CurrentMonth => new DateTime(Year, Month, 1);
@@ -13,11 +16,13 @@ public class CalendarViewModel
 
     public bool IsPrevMonthDisabled => (Year == 2025 && Month <= 7) || (Year < 2025);
 
+    public string FilterText { get; set; }
 
     public CalendarViewModel(int? year, int? month)
     {
         Year = year ?? DateTime.Today.Year;
         Month = month ?? DateTime.Today.Month;
+        FilterText = "";
 
         // Bounds checking the calendar
         int minYear = 2025;
@@ -32,6 +37,16 @@ public class CalendarViewModel
         {
             Year = maxYear;
             Month = 6;
+        }
+    }
+
+    public IEnumerable<CalendarCategoryViewModel> FilteredCategories
+    {
+        get
+        {
+            return Categories
+                .Where(c => String.IsNullOrWhiteSpace(FilterText) || c.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
         }
     }
 

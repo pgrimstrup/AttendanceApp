@@ -1,25 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Attendance.Data;
 
-namespace Attendance.Data
+public class AttendanceSummaryRecord
 {
-    public class AttendanceSummaryRecord
+    public string PNZNumber { get;set; } = string.Empty;
+    public SectionTags Sections { get;set; }
+    public int Count { get;set; }
+
+
+    public int SortCode
     {
-        public string PNZNumber { get;set; } = string.Empty;
-        public SectionTags Sections { get;set; }
-        public int Count { get;set; }
-
-
-        public int SortCode
+        get
         {
-            get
-            {
-                var code = PNZNumber.TrimEnd("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray());
-                if(int.TryParse(code, out var num))
-                    return num;
-                return 0;
-            }
+            var code = PNZNumber.TrimEnd("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray());
+            if(int.TryParse(code, out var num))
+                return num;
+            return 0;
         }
     }
 }

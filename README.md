@@ -9,7 +9,7 @@ I am also using the project to learn and experiment with, and to provide the cod
 * Deployment to Azure App Services (Windows) and Azure SQL Database. I am also considering Redis for caching, as data doesn't change once it has imported. After all, the past is history!
 * GitHib CI/CD actions for automated testing and deployment.
 * .NET 10 (preview) and C# 14 (insiders build).
-* Lessons learnt will be applied to a future project that is more complex and has a wider international audience.
+* Lessons learnt will be applied to a future project that is more complex and has a wider international audience with potential for monetization.
 
 ## About Me
 My name is Paul. I am a software developer with over 30 years of experience in the industry. I have worked on a wide range of projects, from small web applications to large enterprise systems.
@@ -18,7 +18,7 @@ I am always open to new opportunities and I can be contacted via [paul.grimstrup
 ## Problem Description
 In New Zealand, each pistol shooting member has a legal obligation to attend a minimum of 12 club events per year to maintain their firearms license.
 
-Our gun club, Rod Rifle and Gun Club (Manawatu) Inc, needs a simple attendance application to track member attendance at events. 
+Our gun club, Rifle Rod and Gun Club (Manawatu) Inc, needs a simple attendance application to track member attendance at events. 
 The club has around 300 members and holds events multiple times per week. The club has a current swipe-card access system that
 allows members to enter and exit the main gate, enter the clubrooms, and records attendance on various ranges.
 
@@ -28,11 +28,12 @@ However, the current system has several limitations:
 * Swipe-card data is recorded in a separate system and is not integrated with the club's membership database.
 
 ## Solution
-To address these issues, I have developed a simple attendance application that allows:
-* Members to view a simple list of membership number and total number of attendances. This is non-identifying information and is only available through the club website's members-only section.
-* Members to log in and view their detailed attendance history. This uses 2-Factor Authentication (2FA) for additional security. Logins are based on the membership email address.
+To address these issues, I have developed a simple attendance application that:
+* Allows Members to view a simple list of membership number and total number of attendances. This is non-identifying information and is only available through the club website's members-only section.
+* Allows Members to log in and view their detailed attendance history. This will use 2-Factor Authentication (2FA) for additional security. Logins are based on the membership email address.
 * Imports membership records from the club's existing membership database. This is done manually at present, and we are considering options to automate this in the future.
-* Imports swipe-card access records from the existing swipe-card system on a daily basis. This frequency may be increased over time.
+* Imports swipe-card access records from the existing swipe-card system on a daily basis. This frequency may be increased over time, but is currently constrained by the swipe-card system itself.
+* Imports iCalendar data from the club's existing event calendar. This will ensure consistency between the event calendar and the attendance records.
 
 ## Features
 
@@ -51,8 +52,9 @@ There is an `Attendance.ViewModels` project that contains all ViewModels used by
 are composed of an Entity model class and additional properties required for the UI. 
 This project has a dependency on `Attendance.Data`, but no other dependencies.
 
-There is an `AttendanceApp` project. This was the initial project created for the UI, built using Razor Pages. It's been a while since I built a Razor Pages app, so I wanted to refresh my skills.
-I also wanted to keep the initial version simple, but ended up being too simple. The kind of user-interactivity I wanted simply can't be achieved using a server-rendered web application. 
+**[Obsolete]** There is an `AttendanceApp` project. This was the initial project created for the UI, built using Razor Pages. It's been a while since I built a Razor Pages app, so I wanted to refresh my skills.
+I also wanted to keep the initial version simple, but this ended up being too simple. The kind of user-interactivity I wanted simply can't be achieved using a server-rendered web application
+without resorting to JavaScript based framework like Angular or Vue. 
 This project has dependencies on `Attendance.Data`, `Attendance.Services` and `Attendance.ViewModels`. 
 This application provided me with a good proof-of-concept for Azure App Service deployment.
 

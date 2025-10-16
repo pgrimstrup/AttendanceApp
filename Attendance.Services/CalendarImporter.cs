@@ -67,9 +67,10 @@ public class CalendarImporter : ICalendarImporter
                 await _context.CalendarDays.AddAsync(calDay);
             }
 
+            // Reset the events for the day, but we don't cleate the IsClosed flag as this
+            // system may override the calendar for specific closed days.
             calDay.Events.Clear();
             calDay.IsPistolDay = false;
-            calDay.IsClosedDay = false;
 
             date = date.AddDays(1);
         }

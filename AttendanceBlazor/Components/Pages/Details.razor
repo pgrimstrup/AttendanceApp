@@ -60,16 +60,16 @@
         return $"{parts[0]} {parts[^1].Substring(0, 1)}";
     }
 
-    private async Task ExcludeEvent(int personId, DateTime eventDate)
+    private async Task ExcludeEvent(AttendanceViewModel record)
     {
-        await AttendanceManager.ExcludedAsync(personId, DateOnly.FromDateTime(eventDate));
+        await AttendanceManager.ExcludedAsync(record.PersonId, DateOnly.FromDateTime(record.EventDate), record.IsOnRange);
         Model = await LoadModelData(Model.Year, PNZNumber);
         StateHasChanged();
     }
 
-    private async Task IncludeEvent(int personId, DateTime eventDate)
+    private async Task IncludeEvent(AttendanceViewModel record)
     {
-        await AttendanceManager.IncludedAsync(personId, DateOnly.FromDateTime(eventDate));
+        await AttendanceManager.IncludedAsync(record.PersonId, DateOnly.FromDateTime(record.EventDate), record.IsOnRange);
         Model = await LoadModelData(Model.Year, PNZNumber);
         StateHasChanged();
     }
@@ -100,7 +100,7 @@
             <tr>
                 <td>@record.EventTitle</td>
                 <td style="text-align:center">
-                    @if (record.IsMatchDay)
+                    @if (record.IsPistolDay && !record.IsClosedDay)
                     {
                         <i class="bi bi-calendar-check" style="font-size: 18px" />
                     }
@@ -112,13 +112,24 @@
                 else
                 {
                     <td>@record.EntryTime</td>
-                    @if (record.IsMatchDay && String.IsNullOrEmpty(record.RangeTime) && record.IsCounted)
+                    @if (record.IsPistolDay)
                     {
-                        <td class="text-success"><i class="bi bi-person-check" style="font-size: 18px" /><span class="small"> Counted</span></td>
-                    }
-                    else if(record.IsMatchDay && !String.IsNullOrEmpty(record.RangeTime) && !record.IsCounted)
-                    {
-                        <td class="text-danger"><i class="bi bi-x-circle" style="font-size: 18px" /><span class="small"> Excluded</span></td>
+                        if (record.IsClosedDay)
+                        {
+                            <td class="text-warning"><i class="bi bi-lock-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
+                        }
+                        else if(record.IsIncluded)
+                        {
+                            <td class="text-success"><i class="bi bi-person-check" style="font-size: 18px" /><span class="small"> Counted</span></td>
+                        }
+                        else if(record.IsExcluded)
+                        {
+                            <td class="text-danger"><i class="bi bi-x-circle" style="font-size: 18px" /><span class="small"> Excluded</span></td>
+                        }
+                        else
+                        {
+                            <td>@record.RangeTime</td>
+                        }
                     }
                     else
                     {
@@ -136,13 +147,13 @@
                 <td>@record.CardNumber</td>
                 <td>@record.Name</td>
                 <td>
-                    @if (record.IsMatchDay && !record.IsCounted)
+                    @if (record.IsPistolDay && !record.IsClosedDay && !record.IsCounted)
                     {
-                        <button class="btn btn-sm btn-success" @onclick="async () => await IncludeEvent(record.PersonId, record.EventDate)">Include</button>
+                        <button class="btn btn-sm btn-success" @onclick="async () => await IncludeEvent(record)">Include</button>
                     }
-                    @if (record.IsMatchDay && record.IsCounted)
+                    @if (record.IsPistolDay && !record.IsClosedDay && record.IsCounted)
                     {
-                        <button class="btn btn-sm btn-warning" @onclick="async () => await ExcludeEvent(record.PersonId, record.EventDate)">Exclude</button>
+                        <button class="btn btn-sm btn-warning" @onclick="async () => await ExcludeEvent(record)">Exclude</button>
                     }
                 </td>
             </tr>
@@ -162,7 +173,7 @@
     </tfoot>
 </table>
 
-<h2 style="text-align: center" class="mt-5">All Swipe Card Events</h2>
+<h2 style="text-align: center" class="mt-5">All Activity</h2>
 <table class="table table-striped table-sm">
     <thead>
         <tr>

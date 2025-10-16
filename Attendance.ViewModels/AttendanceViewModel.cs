@@ -30,15 +30,23 @@ namespace Attendance.ViewModels
         public string RangeTime => _record.RangeTime.HasValue ? _record.RangeTime.Value.ToString("hh:mm tt") : "";
         public string ExitTime => _record.ExitTime.HasValue ? _record.ExitTime.Value.ToString("hh:mm tt") : "n/a";
 
-        public bool IsMatchDay => _record.IsPistolDay;
+        public bool IsPistolDay => _record.IsPistolDay;
+        public bool IsClosedDay => _record.IsClosedDay;
         public bool IsAwayEvent => _record.IsAwayEvent;
+        public bool IsExcluded => _record.IsExcluded;
+        public bool IsIncluded => _record.IsIncluded;
+        public bool IsOnRange => _record.RangeTime.HasValue;
 
         public bool IsCounted
         {
             get
             {
-                if (_record.IsPistolDay)
+                if (IsAwayEvent)
+                    return true;
+
+                if (!IsClosedDay && IsPistolDay)
                 {
+                    // Check for overrides first
                     if (_record.IsIncluded)
                         return true;
 
@@ -47,6 +55,7 @@ namespace Attendance.ViewModels
 
                     return _record.RangeTime.HasValue;
                 }
+
                 return false;
             }
         }

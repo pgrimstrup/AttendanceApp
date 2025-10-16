@@ -5,14 +5,14 @@ using AttendanceBlazor.Components;
 using AttendanceBlazor.HostedServices;
 using Microsoft.EntityFrameworkCore;
 
-//#if DEBUG
-//var nz = CultureInfo.GetCultureInfo("en-NZ");
-//CultureInfo.DefaultThreadCurrentCulture = nz;
-//CultureInfo.DefaultThreadCurrentUICulture = nz;
-//// If you still use explicit thread cultures:
-//Thread.CurrentThread.CurrentCulture = nz;
-//Thread.CurrentThread.CurrentUICulture = nz;
-//#endif
+#if DEBUG
+var nz = CultureInfo.GetCultureInfo("en-NZ");
+CultureInfo.DefaultThreadCurrentCulture = nz;
+CultureInfo.DefaultThreadCurrentUICulture = nz;
+// If you still use explicit thread cultures:
+Thread.CurrentThread.CurrentCulture = nz;
+Thread.CurrentThread.CurrentUICulture = nz;
+#endif
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,7 +45,15 @@ var app = builder.Build();
 app.MapControllers(); // Map API controllers
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.Database.EnsureCreated(); // Creates the database schema if it doesn't exist
+    }
+}
+else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.

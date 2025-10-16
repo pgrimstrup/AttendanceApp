@@ -12,4 +12,25 @@
 .day-number {
     font-weight: bold;
     font-size: 1.2rem;
+    text-align: left;
 }
+
+    .day-number > span {
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        line-height: 32px;
+        vertical-align: middle;
+        text-align: center;
+        padding: 0px;
+    }
+
+    .day-number > .today {
+        background-color: lightsteelblue;
+        color: black;
+        border-radius: 7px;
+    }
+
+    .day-number > .sunday {
+        color: darkred;
+    }

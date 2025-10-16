@@ -96,6 +96,7 @@ public class AppDbContext : DbContext
         builder.Entity<SportyImport>(e => {
             e.ToTable("SportyImport");
             e.HasKey(e => e.PersonId);
+            e.Property(e => e.PersonId).ValueGeneratedNever();
             e.Property(e => e.FirstName).HasMaxLength(100);
             e.Property(e => e.LastName).HasMaxLength(100);
             e.Property(e => e.CardNumber).HasMaxLength(50);

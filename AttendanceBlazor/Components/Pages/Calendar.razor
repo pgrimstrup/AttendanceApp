@@ -2,128 +2,226 @@
 @rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject ICalendarManager CalendarManager
+@inject IAttendanceManager AttendanceManager
 
 @code {
 
-	[Parameter]
-	public int? Year { get; set; }
+    [Parameter]
+    public int? Year { get; set; }
 
-	[Parameter]
-	public int? Month { get; set; }
+    [Parameter]
+    public int? Month { get; set; }
 
-	public CalendarViewModel Model { get; set; } = new(null, null);
+    public CalendarViewModel Model { get; set; } = new(null, null);
 
-	public List<string> RecurringEventErrors = new();
-	public List<string> SpecialEventErrors = new();
+    string GetCellStyle(CalendarDayViewModel day)
+    {
+        if (!day.IsCurrentMonth)
+            return "other-month";
 
-	// RecurringEvent NewRecurringEvent { get; set; } = new();
-	// SpecialEvent NewSpecialEvent { get; set; } = new();
+        if (day.IsClosed)
+            return "bg-warning bg-opacity-25";
 
-	string GetCellStyle(CalendarDayViewModel day)
-	{
-		if (!day.IsCurrentMonth)
-			return "other-month";
+        if (day.IsChecked)
+            return "bg-success bg-opacity-25";
 
-		if (day.IsClosed)
-			return "bg-warning bg-opacity-25";
+        return "";
+    }
 
-		if (day.IsChecked)
-			return "bg-success bg-opacity-25";
+    string GetDayStyle(CalendarDayViewModel day)
+    {
+        if (day.Date == DateTime.Today)
+            return "today";
+        if (day.Date.DayOfWeek == DayOfWeek.Sunday)
+            return "sunday";
+        return "";
+    }
 
-		return "";
-	}
+    string CleanName(string prefix, string name)
+    {
+        return prefix + "_" + name.GetHashCode().ToString("X");
+    }
 
-	protected override async Task OnInitializedAsync()
-	{
-		await base.OnInitializedAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
 
-		Model = await LoadModelData(Year, Month);
-	}
+        Model = await LoadModelData(Year, Month);
+    }
 
-	private async Task GotoPreviousMonth()
-	{
-		Model = await LoadModelData(Model.PrevMonth.Year, Model.PrevMonth.Month);
-	}
+    private async Task GotoPreviousMonth()
+    {
+        Model = await LoadModelData(Model.PrevMonth.Year, Model.PrevMonth.Month);
+    }
 
-	private async Task GotoNextMonth()
-	{
-		Model = await LoadModelData(Model.NextMonth.Year, Model.NextMonth.Month);
-	}
+    private async Task GotoNextMonth()
+    {
+        Model = await LoadModelData(Model.NextMonth.Year, Model.NextMonth.Month);
+    }
 
-	private async Task<CalendarViewModel> LoadModelData(int? year, int? month)
-	{
-		var model = new CalendarViewModel(year, month);
-		var days = await CalendarManager.GetCalendarDays(model.Year, model.Month);
-		for (int i = 0; i < days.Length; i += 7)
-		{
-			var week = new CalendarWeekViewModel(model.Year, model.Month, days.Skip(i).Take(7).ToArray());
-			model.Weeks.Add(week);
-		}
-		return model;
-	}
+    private async Task<CalendarViewModel> LoadModelData(int? year, int? month)
+    {
+        var model = new CalendarViewModel(year, month);
+        var days = await CalendarManager.GetCalendarDays(model.Year, model.Month);
+        for (int i = 0; i < days.Length; i += 7)
+        {
+            var week = new CalendarWeekViewModel(model.Year, model.Month, days.Skip(i).Take(7).ToArray());
+            model.Weeks.Add(week);
+        }
 
-	private async Task ToggleCancellation(DateTime date)
-	{
-		var day = Model.Weeks.SelectMany(w => w.Days).FirstOrDefault(d => d.Date == date);
-		if (day != null && !day.IsDisabled)
-		{
-			day.IsChecked = !day.IsChecked;
-			StateHasChanged();
-		}
-	}
+        var categories = await CalendarManager.GetCalendarCategories(model.Year, model.Month);
+        model.Categories.AddRange(categories.Select(cat => new CalendarCategoryViewModel(cat)));
+        model.FilterText = Model.FilterText;
+        return model;
+    }
 
+    private async Task ToggleClosedDay(DateTime date)
+    {
+        var day = Model.Weeks.SelectMany(w => w.Days).FirstOrDefault(d => d.Date == date);
+        if (day != null && !day.IsDisabled)
+        {
+            day.IsClosed = await CalendarManager.SetRangeClosed(DateOnly.FromDateTime(date), !day.IsClosed);
+            AttendanceManager.FlushCache();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnEventTypeChanged(CalendarCategoryViewModel category, CalendarEventType newValue)
+    {
+        if (category != null)
+        {
+            category.EventType = newValue;
+            await CalendarManager.UpdateCalendarCategory(category.Entity);
+            AttendanceManager.FlushCache();
+
+            Model = await LoadModelData(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
+            StateHasChanged();
+        }
+    }
+
+    private void OnFilterTextChanged(ChangeEventArgs args)
+    {
+        Model.FilterText = args.Value?.ToString() ?? string.Empty;
+        //StateHasChanged();
+    }
 }
 
 <div>
-	<div class="float-end">
-		<button class="btn btn-sm btn-outline-dark fw-bold" style="width:180px" @onclick='async () => await GotoPreviousMonth()' disabled="@Model.IsPrevMonthDisabled">
-			&lt;&lt; @Model.PrevMonth.ToString("MMMM yyyy")
-		</button>
-		<button class="btn btn-sm btn-outline-dark fw-bold" style="width:180px" @onclick='async () => await GotoNextMonth()' disabled="@Model.IsNextMonthDisabled">
-			@Model.NextMonth.ToString("MMMM yyyy") &gt;&gt;
-		</button>
-	</div>
-	<h2>Pistol Events Calendar - @Model.CurrentMonth.ToString("MMMM") @Model.CurrentMonth.Year</h2>
+    <div class="float-end">
+        <button class="btn btn-sm btn-outline-dark fw-bold" style="width:180px" @onclick='async () => await GotoPreviousMonth()' disabled="@Model.IsPrevMonthDisabled">
+            &lt;&lt; @Model.PrevMonth.ToString("MMMM yyyy")
+        </button>
+        <button class="btn btn-sm btn-outline-dark fw-bold" style="width:180px" @onclick='async () => await GotoNextMonth()' disabled="@Model.IsNextMonthDisabled">
+            @Model.NextMonth.ToString("MMMM yyyy") &gt;&gt;
+        </button>
+    </div>
+    <h2>Pistol Events Calendar - @Model.CurrentMonth.ToString("MMMM") @Model.CurrentMonth.Year</h2>
 </div>
 <div class="table-responsive">
-	<table class="table table-bordered text-center">
-		<thead class="thead-light">
-			<tr>
-				<th width="13%">Monday</th>
-				<th width="13%">Tuesday</th>
-				<th width="13%">Wednesday</th>
-				<th width="13%">Thursday</th>
-				<th width="13%">Friday</th>
-				<th width="13%">Saturday</th>
-				<th width="13%">Sunday</th>
-			</tr>
-		</thead>
-		<tbody>
-			@foreach (var week in Model.Weeks)
-			{
-				<tr>
-					@foreach (var day in week.Days)
-					{
-						<td>
-							<div class="day-cell @GetCellStyle(day)">
-								<div style="height:1.4em" class="m-2">
-									<div class="day-number float-start">@day.Date.Day</div>
-									<input type="checkbox" class="form-check-input float-end" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleCancellation(day.Date)" />
-								</div>
-								@foreach(var ev in day.Events.Where(e => e.IsPistolEvent))
-								{
-									<div class="text-start" style="font-weight:bold; overflow:hidden; padding: 1px 4px">@ev.Name</div>
-								}
-								@foreach (var ev in day.Events.Where(e => !e.IsPistolEvent))
-								{
-									<div class="text-start" style="overflow:hidden; padding: 1px 4px">@ev.Name</div>
-								}
-							</div>
-						</td>
-					}
-				</tr>
-			}
-		</tbody>
-	</table>
+    <table class="table table-bordered text-center">
+        <thead class="thead-light">
+            <tr>
+                <th width="13%">Monday</th>
+                <th width="13%">Tuesday</th>
+                <th width="13%">Wednesday</th>
+                <th width="13%">Thursday</th>
+                <th width="13%">Friday</th>
+                <th width="13%">Saturday</th>
+                <th width="13%">Sunday</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var week in Model.Weeks)
+            {
+                <tr>
+                    @foreach (var day in week.Days)
+                    {
+                        <td>
+                            <div class="day-cell @GetCellStyle(day)">
+                                <div>
+                                    @if (!day.IsDisabled)
+                                    {
+                                        <input type="checkbox" class="form-check-input float-end m-2" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleClosedDay(day.Date)" />
+                                    }
+                                    <div class="day-number">
+                                        <span class="@GetDayStyle(day)">@day.Date.Day</span>
+                                        @if (day.IsClosed)
+                                        {
+                                            <i class="bi bi-lock-fill text-warning py-2" title="Range Closed"></i>
+                                        }
+                                        else if (day.IsChecked)
+                                        {
+                                            <i class="bi bi-calendar2-check text-success text-opacity-75 py-2" title="Scheduled Match Day"></i>
+                                        }
+                                    </div>
+                                </div>
+                                @foreach (var ev in day.Events.Where(e => e.IsPistolEvent && !day.IsClosed))
+                                {
+                                    <div class="text-start text-dark fw-bold px-2">@ev.Name</div>
+                                }
+                                @foreach (var ev in day.Events.Where(e => !e.IsPistolEvent || day.IsClosed))
+                                {
+                                    <div class="text-start text-black-50 px-2">@ev.Name</div>
+                                }
+                            </div>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>
+<hr />
+<div>
+    <div class="float-end">
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <InputText @bind-Value="Model.FilterText" class="form-control" placeholder="Filter..." @oninput="OnFilterTextChanged" ></InputText>
+        </div>
+    </div>
+    <h2>Event Categories</h2>
+</div>
+<div class="table-responsive">
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Last Scheduled Event</th>
+                <th>Event Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var category in Model.FilteredCategories)
+            {
+                <tr @key="@CleanName("Row", category.Name)">
+                    <td>@category.Name</td>
+                    <td>@category.LastEvent</td>
+                    <td>
+                        <InputRadioGroup 
+                                    Name="@CleanName("CategoryEventType", category.Name)"
+                                    Value="category.EventType" 
+                                    ValueChanged="async (CalendarEventType newValue) => await OnEventTypeChanged(category, newValue)"
+                                    ValueExpression="@(() => category.EventType)">
 
+                            <div class="form-check d-inline-block mx-3">
+                                <label class="form-check-label">
+                                    <InputRadio class="form-check-input" Value="CalendarEventType.Other" /> Other
+                                </label>
+                            </div>
+                            <div class="form-check d-inline-block mx-3">
+                                <label class="form-check-label">
+                                    <InputRadio class="form-check-input" Value="CalendarEventType.PistolMatch" /> Pistol Match
+                                </label>
+                            </div>
+                            <div class="form-check d-inline-block mx-3">
+                                <label class="form-check-label">
+                                    <InputRadio class="form-check-input" Value="CalendarEventType.RangeClosed" /> Range Closed
+                                </label>
+                            </div>
+                        </InputRadioGroup>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
