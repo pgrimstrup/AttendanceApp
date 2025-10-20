@@ -19,11 +19,11 @@
         if (!day.IsCurrentMonth)
             return "other-month";
 
-        if (day.IsClosed)
-            return "bg-warning bg-opacity-25";
-
         if (day.IsChecked)
             return "bg-success bg-opacity-25";
+
+        if (day.IsClosedOverride || (day.Entity.IsPistolDay && day.Entity.IsClosedDay))
+            return "bg-warning bg-opacity-25";
 
         return "";
     }
@@ -75,15 +75,15 @@
         return model;
     }
 
-    private async Task ToggleClosedDay(DateTime date)
+    private async Task ToggleClosedDay(CalendarDayViewModel day)
     {
-        var day = Model.Weeks.SelectMany(w => w.Days).FirstOrDefault(d => d.Date == date);
-        if (day != null && !day.IsDisabled)
-        {
-            day.IsClosed = await CalendarManager.SetRangeClosed(DateOnly.FromDateTime(date), !day.IsClosed);
-            AttendanceManager.FlushCache();
-            StateHasChanged();
-        }
+        if (day.IsChecked)
+            await CalendarManager.SetRangeClosed(day.Entity);
+        else
+            await CalendarManager.SetRangeOpen(day.Entity);
+
+        AttendanceManager.FlushCache();
+        StateHasChanged();
     }
 
     private async Task OnEventTypeChanged(CalendarCategoryViewModel category, CalendarEventType newValue)
@@ -107,11 +107,12 @@
         _debounceTimer?.Dispose();
         _debounceTimer = new Timer(_ => {
             Model.FilterText = e.Value?.ToString() ?? string.Empty;
-            InvokeAsync(StateHasChanged); 
-        }, null, 300, Timeout.Infinite); 
+            InvokeAsync(StateHasChanged);
+        }, null, 300, Timeout.Infinite);
     }
 }
 
+<PageTitle>Pistol Events Calendar | RRGC Attendance</PageTitle>
 <div>
     <div class="float-end">
         <button class="btn btn-sm btn-outline-dark fw-bold" style="width:180px" @onclick='async () => await GotoPreviousMonth()' disabled="@Model.IsPrevMonthDisabled">
@@ -147,25 +148,25 @@
                                 <div>
                                     @if (!day.IsDisabled)
                                     {
-                                        <input type="checkbox" class="form-check-input float-end m-2" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleClosedDay(day.Date)" />
+                                        <input type="checkbox" class="form-check-input float-end m-2" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleClosedDay(day)" />
                                     }
                                     <div class="day-number">
                                         <span class="@GetDayStyle(day)">@day.Date.Day</span>
-                                        @if (day.IsClosed)
-                                        {
-                                            <i class="bi bi-lock-fill text-warning py-2" title="Range Closed"></i>
-                                        }
-                                        else if (day.IsChecked)
+                                        @if (day.IsChecked)
                                         {
                                             <i class="bi bi-calendar2-check text-success text-opacity-75 py-2" title="Scheduled Match Day"></i>
                                         }
+                                        else if (day.IsClosedOverride || (day.Entity.IsPistolDay && day.Entity.IsClosedDay))
+                                        {
+                                            <i class="bi bi-lock-fill text-warning py-2" title="Range Closed"></i>
+                                        }
                                     </div>
                                 </div>
-                                @foreach (var ev in day.Events.Where(e => e.IsPistolEvent && !day.IsClosed))
+                                @foreach (var ev in day.Events.Where(e => e.IsPistolEvent && day.IsChecked))
                                 {
                                     <div class="text-start text-dark fw-bold px-2">@ev.Name</div>
                                 }
-                                @foreach (var ev in day.Events.Where(e => !e.IsPistolEvent || day.IsClosed))
+                                @foreach (var ev in day.Events.Where(e => !e.IsPistolEvent || !day.IsChecked))
                                 {
                                     <div class="text-start text-black-50 px-2">@ev.Name</div>
                                 }
@@ -182,7 +183,7 @@
     <div class="float-end">
         <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <InputText @bind-Value="Model.FilterText" class="form-control" placeholder="Filter..." @oninput="OnFilterTextChanged" ></InputText>
+            <InputText @bind-Value="Model.FilterText" class="form-control" placeholder="Filter..." @oninput="OnFilterTextChanged"></InputText>
         </div>
     </div>
     <h2>Event Categories</h2>
@@ -203,11 +204,10 @@
                     <td>@category.Name</td>
                     <td>@category.LastEvent</td>
                     <td>
-                        <InputRadioGroup 
-                                    Name="@CleanName("CategoryEventType", category.Name)"
-                                    Value="category.EventType" 
-                                    ValueChanged="async (CalendarEventType newValue) => await OnEventTypeChanged(category, newValue)"
-                                    ValueExpression="@(() => category.EventType)">
+                        <InputRadioGroup Name="@CleanName("CategoryEventType", category.Name)"
+                                         Value="category.EventType"
+                                         ValueChanged="async (CalendarEventType newValue) => await OnEventTypeChanged(category, newValue)"
+                                         ValueExpression="@(() => category.EventType)">
 
                             <div class="form-check d-inline-block mx-3">
                                 <label class="form-check-label">

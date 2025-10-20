@@ -49,7 +49,7 @@
 
 }
 
-<PageTitle>RRGC Attendance Records</PageTitle>
+<PageTitle>RRGC Attendance</PageTitle>
 
 <div>
     <h2 style="text-align:center">Current @Model.YearTitle shoot counts, by PNZ number, by Section</h2>
@@ -82,7 +82,7 @@
                     @foreach(var item in Model.MultiGun)
                     {
                         <tr>
-                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
                             <td>@item.Count</td>
                         </tr>
                     }
@@ -116,7 +116,7 @@
                     @foreach (var item in Model.CAS)
                     {
                         <tr>
-                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
                             <td>@item.Count</td>
                         </tr>
                     }
@@ -150,7 +150,7 @@
                     @foreach (var item in Model.IPSC)
                     {
                         <tr>
-                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
                             <td>@item.Count</td>
                         </tr>
                     }
@@ -183,7 +183,7 @@
                     @foreach (var item in Model.ISSF)
                     {
                         <tr>
-                            <td><NavLink href="@($"/details/{item.PNZNumber}")">@item.PNZNumber</NavLink></td>
+                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
                             <td>@item.Count</td>
                         </tr>
                     }

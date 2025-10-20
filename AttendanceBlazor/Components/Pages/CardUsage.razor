@@ -1,0 +1,142 @@
+﻿@page "/card-usage/{CardNumber}"
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject IAttendanceManager AttendanceManager
+
+<PageTitle>Card Usage | RRGC Attendance</PageTitle>
+
+@code {
+    [Parameter]
+    public string CardNumber { get; set; } = string.Empty;
+
+    public MemberHistoryViewModel Model { get; set; } = new(null, null);
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Model = await LoadModelData(Model.Year, CardNumber);
+    }
+
+    private async Task<MemberHistoryViewModel> LoadModelData(int? year, string cardNumber)
+    {
+        var model = new MemberHistoryViewModel(year, cardNumber);
+
+        var attendance = await AttendanceManager.GetEntryExitsAsync(Model.StartDate, Model.EndDate, cardNumber);
+        foreach (var record in attendance)
+        {
+            if (record.EntryTime == null && record.ExitTime == null && record.RangeTime == null)
+            {
+                // Ignore records with no times on this view
+                continue;
+            }
+
+            model.Attendance.Add(new AttendanceViewModel(record));
+        }
+        model.Attendance.Sort((a, b) => a.EventDate.CompareTo(b.EventDate));
+
+        var swipeEvents = await AttendanceManager.GetSwipeCardEventsAsync(Model.StartDate, Model.EndDate, CardNumber);
+        model.SwipeEvents.AddRange(swipeEvents);
+
+        return model;
+    }
+
+    private string ShortenName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return name;
+
+        return $"{parts[0]} {parts[^1].Substring(0, 1)}";
+    }
+
+}
+
+<h2 style="text-align:center">Entry/Exits for Card Number @CardNumber</h2>
+<h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.EndDate.ToString("d MMMM yyyy")</h3>
+<div style="text-align: center">Last updated @Model.LastUpdated.ToString("dd/MM/yyyy h:mm tt")</div>
+
+<table class="table table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Entry time</th>
+            <th>On Range</th>
+            <th>Exit time</th>
+            <th>Time on range</th>
+            <th>Card number</th>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var record in Model.Attendance)
+        {
+            <tr>
+                <td>@record.EventTitle</td>
+                @if (record.IsAwayEvent)
+                {
+                    <td style="text-align:center"><i class="bi bi-duffle" style="font-size: 18px" /></td>
+                    <td colspan="3">@($"{record.AwayLocation} - {record.AwayEventName}".Trim(' ', '-'))</td>
+                }
+                else
+                {
+                    <td>@record.EntryTime</td>
+                    @if (record.IsIncluded)
+                    {
+                        <td class="text-success"><i class="bi bi-person-check" style="font-size: 18px" /><span class="small"> Counted</span></td>
+                    }
+                    else if (record.IsExcluded)
+                    {
+                        <td class="text-danger"><i class="bi bi-x-circle" style="font-size: 18px" /><span class="small"> Excluded</span></td>
+                    }
+                    else if (!record.IsMatchDay && record.IsRangeClosed)
+                    {
+                        <td class="text-warning"><i class="bi bi-lock-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
+                    }
+                    else
+                    {
+                        <td>@record.RangeTime</td>
+                    }
+                    <td>@record.ExitTime</td>
+                }
+
+                <td>@record.TimeOnRange</td>
+                <td>@record.CardNumber</td>
+                <td>@record.FullName</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<hr />
+<h2 style="text-align: center" class="mt-5">All Activity</h2>
+<table class="table table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Card Number</th>
+            <th>Card Name</th>
+            <th>Card Info 1</th>
+            <th>Location</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var e in Model.SwipeEvents)
+        {
+            <tr>
+                <td>@e.EventTime.ToString("dddd, d MMMM")</td>
+                <td>@e.EventTime.ToString("h:mm tt")</td>
+                <td>@e.CardNumber</td>
+                <td>@e.CardUserName</td>
+                <td>@e.CardInfo1</td>
+                <td>@e.Location</td>
+            </tr>
+        }
+    </tbody>
+</table>

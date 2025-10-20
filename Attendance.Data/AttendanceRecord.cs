@@ -13,6 +13,8 @@ public record AttendanceRecord
 
     public bool IsPistolDay { get; set; }
     public bool IsClosedDay { get; set; }
+    public bool IsClosedOverride { get; set; }
+    public bool IsOpenOverride { get; set; }
     public bool IsAwayEvent { get; set; }
     public bool IsExcluded { get; set; }
     public bool IsIncluded { get; set; }
@@ -25,19 +27,41 @@ public record AttendanceRecord
     public string SwipedCardNumber { get; set; } = string.Empty;
     public int SwipedPersonId { get; set; }
 
+    public bool IsMatchDay
+    {
+        get
+        {
+            // Away events are always considered match days
+            if (IsAwayEvent)
+                return true;
+
+            if (!IsClosedOverride)
+            {
+                if (IsOpenOverride)
+                    return true;
+
+                if (IsPistolDay && !IsClosedDay)
+                    return true;
+            }
+
+            return false;
+        }
+    }
 
     public bool IsCounted
     {
         get
         {
+            // Away events are always counted
             if (IsAwayEvent)
                 return true;
 
-            if (!IsClosedDay && IsPistolDay)
+            if (IsMatchDay)
             {
                 // Check for overrides first
                 if (IsIncluded)
                     return true;
+
                 if (IsExcluded)
                     return false;
 

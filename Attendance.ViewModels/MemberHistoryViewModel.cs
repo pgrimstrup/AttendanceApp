@@ -2,7 +2,7 @@
 
 namespace Attendance.ViewModels;
 
-public class DetailsViewModel
+public class MemberHistoryViewModel
 {
     DateTime _startTime;
     DateTime _endTime;
@@ -11,7 +11,7 @@ public class DetailsViewModel
     public int Year { get; set; }
     public string PNZNumber { get; set; } = string.Empty;
 
-    public DetailsViewModel(int? year, string? pnzNumber)
+    public MemberHistoryViewModel(int? year, string? pnzNumber)
     {
         Year = year ?? (DateTime.Today.Month >= 7 ? DateTime.Today.Year : (DateTime.Today.Year - 1));
         PNZNumber = pnzNumber ?? string.Empty;
@@ -32,7 +32,7 @@ public class DetailsViewModel
 
     public DateTime LastUpdated => _lastUpdated;
 
-    public int TotalMatchDays => Attendance.Count(a => (a.IsPistolDay && !a.IsClosedDay) || a.IsAwayEvent);
+    public int TotalMatchDays => Attendance.Count(a => a.IsMatchDay);
     public int TotalEventsCounted => Attendance.Count(a => a.IsCounted);
 
     public List<AttendanceViewModel> Attendance { get; }

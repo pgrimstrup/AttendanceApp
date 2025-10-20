@@ -8,8 +8,11 @@ namespace Attendance.Services;
 
 public interface IAttendanceManager
 {
+	Task<MemberRecord[]> GetMembers();
+
 	Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate);
-	Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers);
+	Task<AttendanceRecord[]> GetEntryExitsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers);
+    Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers);
 	Task<EntraPassImport[]> GetSwipeCardEventsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers);
 	void FlushCache();
 
@@ -28,7 +31,23 @@ public interface IAttendanceManager
 /// </summary>
 public class AttendanceManager : IAttendanceManager
 {
-	static string Query = @"
+	static string MembersQuery = @"
+WITH CardUsers(EntraPersonId, EntraCardNumber, EntraCardUserName, EntraEndDate) AS (
+	SELECT 
+		PersonId, CardNumber, CardUserName, MAX(ExpiryDate)
+	FROM EntraPassImport
+	GROUP BY PersonId, CardNumber, CardUserName
+)
+SELECT 
+	s.PersonId, s.CardNumber SportyCardNumber, 
+	s.RegistrationDate, s.FirstName, s.LastName,
+	s.FALNumber, s.PNZNumber, s.MobileNumber, s.EmailAddress, s.Sections,
+	u1.*
+FROM SportyImport s
+FULL OUTER JOIN CardUsers u1 ON u1.EntraCardNumber = s.CardNumber OR u1.EntraPersonId = s.PersonId
+";
+
+	static string AttendanceQuery = @"
 WITH Entries(EntryTime, EntryCardNumber, EntryPersonId) AS 
 (
 	SELECT MIN(EventTime), CardNumber, PersonId 
@@ -53,9 +72,9 @@ Ranges(RangeTime, RangeCardNumber, RangePersonId) AS
 	  AND EventTime >= @StartDate AND EventTime < @EndDate
 	GROUP BY CONVERT(DATE, EventTime), CardNumber, PersonId
 ),
-Dates(EventDate, IsPistolDay, IsClosedDay) AS 
+Dates(EventDate, IsPistolDay, IsClosedDay, IsClosedOverride, IsOpenOverride) AS 
 (
-	SELECT Date, IsPistolDay, IsClosedDay
+	SELECT Date, IsPistolDay, IsClosedDay, IsClosedOverride, IsOpenOverride
 	FROM CalendarDay
 	WHERE Date >= @StartDate AND Date < @EndDate
 ),
@@ -73,7 +92,7 @@ Away(PersonId, EventDate, IsAwayEvent, AwayLocation, AwayEventName) AS
 	WHERE Dates.EventDate >= AwayEvent.StartDate AND Dates.EventDate <= AwayEvent.EndDate
 )
 SELECT p.PersonId, p.FirstName, p.LastName, p.CardNumber RegisteredCardNumber, 
-	p.FALNumber, p.PNZNumber, p.Sections, Dates.EventDate, Dates.IsPistolDay, Dates.IsClosedDay,
+	p.FALNumber, p.PNZNumber, p.Sections, Dates.EventDate, Dates.IsPistolDay, Dates.IsClosedDay, Dates.IsClosedOverride, Dates.IsOpenOverride,
 	COALESCE(Overrides.IsExcluded, CAST(0 AS BIT)) IsExcluded, 
 	COALESCE(Overrides.IsIncluded, CAST(0 AS BIT)) IsIncluded,
 	COALESCE(Away.IsAwayEvent, CAST(0 AS BIT)) IsAwayEvent, Away.AwayLocation, Away.AwayEventName,
@@ -111,6 +130,29 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 		_keys.Clear();
     }
 
+	public async Task<MemberRecord[]> GetMembers()
+	{
+        string key = $"Members_ALL";
+        if (_cache.TryGetValue<MemberRecord[]>(key, out var cached) && cached != null)
+            return cached;
+
+		var parameters = new Dictionary<string, object?>();
+		var sql = MembersQuery;
+
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var result = context.QueryAsync<MemberRecord>(sql, parameters);
+
+		var results = new List<MemberRecord>();
+        await foreach (var item in result)
+            results.Add(item);
+
+        _cache.Set(key, results.ToArray(), _cacheTimeToLive);
+        if (!_keys.Contains(key))
+            _keys.Add(key);
+        return results.ToArray();
+    }
+
     public async Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers)
 	{
 		var parameters = new Dictionary<string, object?>
@@ -125,7 +167,7 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 
         // Since we need to use string concatenation to build the IN clause, we need to ensure
         // that all values are SQL parameters.
-        var sql = Query;
+        var sql = AttendanceQuery;
 		if(pnzNumbers != null && pnzNumbers.Length > 0)
 		{
 			int index = 1;
@@ -154,7 +196,50 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
         return results.ToArray();
     }
 
-	public async Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate)
+    public async Task<AttendanceRecord[]> GetEntryExitsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers)
+    {
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@StartDate", startDate },
+            { "@EndDate", endDate }
+        };
+
+        string key = $"EntryExits_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}_{String.Join("+", cardNumbers)}";
+        if (_cache.TryGetValue<AttendanceRecord[]>(key, out var cached) && cached != null)
+            return cached;
+
+        // Since we need to use string concatenation to build the IN clause, we need to ensure
+        // that all values are SQL parameters.
+        var sql = AttendanceQuery;
+        if (cardNumbers != null && cardNumbers.Length > 0)
+        {
+            int index = 1;
+            var parameterNames = new List<string>();
+            foreach (var pnzNumber in cardNumbers.Distinct())
+            {
+                parameters.Add($"@P{index}", pnzNumber.Trim());
+                parameterNames.Add($"@P{index}");
+                index++;
+            }
+
+            sql += " AND COALESCE(Entries.EntryCardNumber, Ranges.RangeCardNumber, Exits.ExitCardNumber) IN (" + string.Join(", ", parameterNames) + ")";
+        }
+
+        var results = new List<AttendanceRecord>();
+
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var result = context.QueryAsync<AttendanceRecord>(sql, parameters);
+        await foreach (var item in result)
+            results.Add(item);
+
+        _cache.Set(key, results.ToArray(), _cacheTimeToLive);
+        if (!_keys.Contains(key))
+            _keys.Add(key);
+        return results.ToArray();
+    }
+
+    public async Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate)
 	{
         string key = $"AttendanceSummary_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
         if (_cache.TryGetValue<AttendanceSummaryRecord[]>(key, out var cached) && cached != null)

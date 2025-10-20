@@ -9,6 +9,9 @@ public class CalendarDay
     public DateOnly Date { get; set; }
     public bool IsClosedDay { get; set; }
     public bool IsPistolDay { get; set; }
+    public bool IsOpenOverride { get; set; }
+    public bool IsClosedOverride { get; set; }
+
     public string? EventData 
     {
         get => JsonSerializer.Serialize(Events);

@@ -1,16 +1,16 @@
-﻿@page "/Details/{PNZNumber}"
+﻿@page "/Attendance/{PNZNumber}"
 @rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject IAttendanceManager AttendanceManager
 
-<PageTitle>RRGC Attendance Details for @PNZNumber</PageTitle>
+<PageTitle>PNZ Number @PNZNumber | RRGC Attendance</PageTitle>
 
 @code {
 
     [Parameter]
     public string PNZNumber { get; set; } = string.Empty;
 
-    public DetailsViewModel Model { get; set; } = new(null, null);
+    public MemberHistoryViewModel Model { get; set; } = new(null, null);
 
     public AwayEventViewModel AwayEvent { get; set; } = new();
 
@@ -22,9 +22,9 @@
     }
 
 
-    private async Task<DetailsViewModel> LoadModelData(int? year, string? pnzNumber)
+    private async Task<MemberHistoryViewModel> LoadModelData(int? year, string? pnzNumber)
     {
-        var model = new DetailsViewModel(year, pnzNumber);
+        var model = new MemberHistoryViewModel(year, pnzNumber);
 
         var attendance = await AttendanceManager.GetAttendanceAsync(Model.StartDate, Model.EndDate, PNZNumber);
         foreach (var record in attendance)
@@ -133,30 +133,23 @@
                 else
                 {
                     <td style="text-align:center">
-                        @if (record.IsPistolDay && !record.IsClosedDay)
+                        @if (record.IsMatchDay)
                         {
                             <i class="bi bi-calendar-check" style="font-size: 18px" />
                         }
                     </td>
                     <td>@record.EntryTime</td>
-                    @if (record.IsPistolDay)
+                    @if (record.IsIncluded)
                     {
-                        if (record.IsClosedDay)
-                        {
-                            <td class="text-warning"><i class="bi bi-lock-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
-                        }
-                        else if (record.IsIncluded)
-                        {
-                            <td class="text-success"><i class="bi bi-person-check" style="font-size: 18px" /><span class="small"> Counted</span></td>
-                        }
-                        else if (record.IsExcluded)
-                        {
-                            <td class="text-danger"><i class="bi bi-x-circle" style="font-size: 18px" /><span class="small"> Excluded</span></td>
-                        }
-                        else
-                        {
-                            <td>@record.RangeTime</td>
-                        }
+                        <td class="text-success"><i class="bi bi-person-check" style="font-size: 18px" /><span class="small"> Counted</span></td>
+                    }
+                    else if (record.IsExcluded)
+                    {
+                        <td class="text-danger"><i class="bi bi-x-circle" style="font-size: 18px" /><span class="small"> Excluded</span></td>
+                    }
+                    else if (!record.IsMatchDay && record.IsRangeClosed)
+                    {
+                        <td class="text-warning"><i class="bi bi-lock-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
                     }
                     else
                     {
@@ -187,11 +180,11 @@
                     {
                         <button class="btn btn-sm btn-danger" @onclick="async () => await DeleteAwayEvent(record)">Delete</button>
                     }
-                    else if (record.IsPistolDay && !record.IsClosedDay && !record.IsCounted)
+                    else if (record.IsMatchDay && !record.IsCounted)
                     {
                         <button class="btn btn-sm btn-success" @onclick="async () => await IncludeEvent(record)">Include</button>
                     }
-                    else if (record.IsPistolDay && !record.IsClosedDay && record.IsCounted)
+                    else if (record.IsMatchDay && record.IsCounted)
                     {
                         <button class="btn btn-sm btn-warning" @onclick="async () => await ExcludeEvent(record)">Exclude</button>
                     }

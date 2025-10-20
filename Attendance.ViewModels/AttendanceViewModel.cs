@@ -25,14 +25,18 @@ public class AttendanceViewModel
     public string ExitTime => _record.ExitTime.HasValue ? _record.ExitTime.Value.ToString("hh:mm tt") : "n/a";
 
     /// <summary>
+    /// Overall determination if this date is a match day. 
+    /// </summary>
+    public bool IsMatchDay => _record.IsMatchDay;
+
+    /// <summary>
     /// The overall determination if this attendance record counts toward attendance requirements.
     /// If this is false, then the record is excluded for some reason (e.g. closed day, excluded, no matches, 
     /// not on range, not included, etc)
     /// </summary>
     public bool IsCounted => _record.IsCounted;
 
-    public bool IsPistolDay => _record.IsPistolDay;
-    public bool IsClosedDay => _record.IsClosedDay;
+    public bool IsRangeClosed => _record.IsClosedDay || _record.IsClosedOverride;
     public bool IsAwayEvent => _record.IsAwayEvent;
     public bool IsExcluded => _record.IsExcluded;
     public bool IsIncluded => _record.IsIncluded;
@@ -43,6 +47,7 @@ public class AttendanceViewModel
     public string AwayEventName => _record.AwayEventName ?? "";
 
     public string Name => $"{_record.FirstName} {_record.LastName.Substring(0, 1)}";
+    public string FullName => $"{_record.FirstName} {_record.LastName}";
     public string CardNumber => _record.SwipedCardNumber;
     public int PersonId => _record.PersonId;
 

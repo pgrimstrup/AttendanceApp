@@ -1,4 +1,5 @@
-﻿using Attendance.Data;
+﻿using System.Reflection.Metadata.Ecma335;
+using Attendance.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,8 @@ public interface ICalendarManager
     Task<CalendarDay[]> GetCalendarDays(int year, int month);
     Task<CalendarCategory[]> GetCalendarCategories(int year, int month);
     Task UpdateCalendarCategory(CalendarCategory category);
-    Task<bool> SetRangeClosed(DateOnly date, bool isClosed);
+    Task SetRangeClosed(CalendarDay day);
+    Task SetRangeOpen(CalendarDay day);
 }
 
 public class CalendarManager : ICalendarManager
@@ -53,41 +55,63 @@ public class CalendarManager : ICalendarManager
             .ToArrayAsync();
     }
 
-    public async Task<bool> SetRangeClosed(DateOnly date, bool isClosed)
+
+    public async Task SetRangeClosed(CalendarDay source)
+    {
+        if(source.IsPistolDay && !source.IsClosedDay)
+        {
+            source.IsOpenOverride = false;
+            source.IsClosedOverride = true;
+        }
+        else
+        {
+            source.IsOpenOverride = false;
+            source.IsClosedOverride = false;
+        }
+        await UpdateCalendarDay(source);
+    }
+
+    public async Task SetRangeOpen(CalendarDay source)
+    {
+        if (source.IsPistolDay && !source.IsClosedDay)
+        {
+            source.IsOpenOverride = false;
+            source.IsClosedOverride = false;
+        }
+        else
+        {
+            source.IsOpenOverride = true;
+            source.IsClosedOverride = false;
+        }
+        await UpdateCalendarDay(source);
+    }
+
+    private async Task UpdateCalendarDay(CalendarDay source)
     {
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var calendarDay = await context.CalendarDays.FindAsync(date);
+        var calendarDay = await context.CalendarDays.FindAsync(source.Date);
 
-        bool wasClosed = false;
         if (calendarDay == null)
         {
-            calendarDay = new CalendarDay
-            {
-                Date = date,
-                IsClosedDay = isClosed
+            calendarDay = new CalendarDay {
+                Date = source.Date,
+                IsPistolDay = source.IsPistolDay,
+                IsClosedDay = source.IsClosedDay,
+                IsOpenOverride = source.IsOpenOverride,
+                IsClosedOverride = source.IsClosedOverride
             };
             await context.CalendarDays.AddAsync(calendarDay);
         }
         else
         {
-            wasClosed = calendarDay.IsClosedDay;
-            calendarDay.IsClosedDay = isClosed;
-            context.CalendarDays.Update(calendarDay);
+            calendarDay.IsOpenOverride = source.IsOpenOverride;
+            calendarDay.IsClosedOverride = source.IsClosedOverride;
         }
 
-        try
-        {
-            await context.SaveChangesAsync();
-            _logger.LogInformation("Calendar Update: {Date:dd/MM/yyyy} - IsClosed = {isClosed}", date, isClosed);
-            return calendarDay.IsClosedDay;
-        }
-        catch (DbUpdateException ex)
-        {
-            _logger.LogError(ex, "Error updating calendar day for {Date:dd/MM/yyyy}", date);
-            return wasClosed;
-        }
+        await context.SaveChangesAsync();
     }
+
 
     public async Task UpdateCalendarCategory(CalendarCategory category)
     {
