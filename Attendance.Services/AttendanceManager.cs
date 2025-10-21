@@ -9,8 +9,9 @@ namespace Attendance.Services;
 public interface IAttendanceManager
 {
 	Task<MemberRecord[]> GetMembers();
+	Task<MemberRecord[]> GetRangeActivity(DateTime startDate, DateTime endDate);
 
-	Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate);
+    Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate);
 	Task<AttendanceRecord[]> GetEntryExitsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers);
     Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers);
 	Task<EntraPassImport[]> GetSwipeCardEventsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers);
@@ -47,7 +48,31 @@ FROM SportyImport s
 FULL OUTER JOIN CardUsers u1 ON u1.EntraCardNumber = s.CardNumber OR u1.EntraPersonId = s.PersonId
 ";
 
-	static string AttendanceQuery = @"
+	static string ActivityQuery = @"
+WITH Members AS
+(
+	SELECT 
+		s.PersonId, s.CardNumber SportyCardNumber, 
+		s.RegistrationDate, s.FirstName, s.LastName,
+		s.FALNumber, s.PNZNumber, s.MobileNumber, s.EmailAddress, s.Sections
+	FROM SportyImport s
+)
+SELECT 
+	swipes.EventTime,
+	swipes.Location EntraLocation,
+	swipes.PersonId EntraPersonId,
+	swipes.CardNumber EntraCardNumber,
+	swipes.CardUserName EntraCardUserName,
+	swipes.CardInfo1 EntraCardInfo1,
+	swipes.ExpiryDate EntraEndDate,
+	Members.*
+FROM EntraPassImport swipes
+LEFT OUTER JOIN Members ON Members.PersonId = swipes.PersonId OR Members.SportyCardNumber = swipes.CardNumber
+WHERE (@StartDate IS NULL OR swipes.EventTime >= @StartDate) AND (@EndDate IS NULL OR swipes.EventTime < @EndDate)
+";
+
+
+    static string AttendanceQuery = @"
 WITH Entries(EntryTime, EntryCardNumber, EntryPersonId) AS 
 (
 	SELECT MIN(EventTime), CardNumber, PersonId 
@@ -153,6 +178,38 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
         return results.ToArray();
     }
 
+    public async Task<MemberRecord[]> GetRangeActivity(DateTime startDate, DateTime endDate)
+    {
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@StartDate", startDate },
+            { "@EndDate", endDate }
+        };
+
+        string key = $"RangeActivity_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
+
+        if (_cache.TryGetValue<MemberRecord[]>(key, out var cached) && cached != null)
+            return cached;
+
+        // Since we need to use string concatenation to build the IN clause, we need to ensure
+        // that all values are SQL parameters.
+        var sql = ActivityQuery;
+
+        var results = new List<MemberRecord>();
+
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var result = context.QueryAsync<MemberRecord>(sql, parameters);
+        await foreach (var item in result)
+            results.Add(item);
+
+        _cache.Set(key, results.ToArray(), _cacheTimeToLive);
+        if (!_keys.Contains(key))
+            _keys.Add(key);
+        return results.ToArray();
+    }
+
+
     public async Task<AttendanceRecord[]> GetAttendanceAsync(DateTime startDate, DateTime endDate, params string[] pnzNumbers)
 	{
 		var parameters = new Dictionary<string, object?>
@@ -204,7 +261,10 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
             { "@EndDate", endDate }
         };
 
-        string key = $"EntryExits_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}_{String.Join("+", cardNumbers)}";
+		string key = $"EntryExits_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
+		if(cardNumbers != null)
+			key += "_" + String.Join("+", cardNumbers);
+
         if (_cache.TryGetValue<AttendanceRecord[]>(key, out var cached) && cached != null)
             return cached;
 
@@ -276,7 +336,10 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 
     public async Task<EntraPassImport[]> GetSwipeCardEventsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers)
 	{
-		string key = $"SwipeCardEvents_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}_{String.Join("+", cardNumbers)}";
+		string key = $"SwipeCardEvents_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
+		if(cardNumbers != null)
+			key += "_" + String.Join("+", cardNumbers);
+
 		if (_cache.TryGetValue<EntraPassImport[]>(key, out var cached) && cached != null)
 			return cached;
 

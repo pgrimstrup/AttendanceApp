@@ -1,4 +1,4 @@
-﻿@page "/Members"
+﻿@page "/members"
 @rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject IAttendanceManager AttendanceManager
@@ -114,7 +114,7 @@
                             }
                             else
                             {
-                                <div><NavLink href="@("/card-usage/" + member.EntraCardNumber)">@member.EntraCardNumber</NavLink></div>
+                                <div><NavLink href="@("/cards/" + member.EntraCardNumber)">@member.EntraCardNumber</NavLink></div>
                             }
 
                             @if (member.EntraCardNumber != member.SportyCardNumber)

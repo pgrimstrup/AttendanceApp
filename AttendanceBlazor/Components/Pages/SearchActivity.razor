@@ -1,0 +1,200 @@
+﻿@page "/activity"
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject IAttendanceManager AttendanceManager
+
+<PageTitle>Activity Search | RRGC Attendance</PageTitle>
+
+@code {
+
+    public bool UseFromDate { get; set; } = true;
+    public bool UseToDate { get; set; }
+    public bool OrderDescending { get; set; }
+    public string FilterText { get; set; } = "";
+
+    public DateTime FromDate { get; set; } = DateTime.Today.AddDays(-7);
+    public DateTime ToDate { get; set; } = DateTime.Today.AddDays(-1);
+
+    public List<MemberRecord> Activity = new();
+    public IEnumerable<MemberRecord> FilteredActivity
+    {
+        get
+        {
+            foreach (var record in Activity)
+            {
+                var text = $"{record.EntraCardNumber}|{record.EntraCardUserName}|{record.EntraCardNumber}|{record.FullName}|{record.EntraInfo1}|{record.EntraLocation}";
+                if (String.IsNullOrWhiteSpace(FilterText) || text.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
+                    yield return record;
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Activity = await LoadModelData();
+    }
+
+    private async Task DoSearchClicked()
+    {
+        Activity = await LoadModelData();
+    }
+
+    private async Task<List<MemberRecord>> LoadModelData()
+    {
+        DateTime endDate = new DateTime(DateTime.Today.Year + 1, 7, 1);
+        DateTime startDate = new DateTime(DateTime.Today.Year, 7, 1);
+        if (DateTime.Today.Month < 7)
+        {
+            startDate = startDate.AddYears(-1);
+            endDate = endDate.AddYears(-1);
+        }
+
+        if (UseFromDate)
+            startDate = FromDate;
+        if (UseToDate)
+            endDate = ToDate.AddDays(1);
+
+        var result = await AttendanceManager.GetRangeActivity(startDate, endDate);
+        if (OrderDescending)
+        {
+            return result
+                .OrderByDescending(a => a.EventTime)
+                .ThenBy(a => a.EntraCardNumber)
+                .ToList();
+        }
+
+        return result
+            .OrderBy(a => a.EventTime)
+            .ThenBy(a => a.EntraCardNumber)
+            .ToList();
+    }
+
+    private Timer? _debounceTimer;
+
+    private void OnFilterTextChanged(ChangeEventArgs e)
+    {
+        // Use a 300ms debounce to avoid excessive filtering while typing
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(_ => {
+            FilterText = e.Value?.ToString() ?? string.Empty;
+            InvokeAsync(StateHasChanged);
+        }, null, 300, Timeout.Infinite);
+    }
+
+}
+
+<h3>Activity Search</h3>
+
+<div class="row">
+    <div class="col-3">
+        <div class="form-check">
+            <label class="form-check-label"><InputCheckbox class="form-check-input" @bind-Value="UseFromDate"></InputCheckbox> From Date</label>
+        </div>
+        <InputDate @bind-Value="FromDate" class="form-control" disabled="@(!UseFromDate)"></InputDate>
+    </div>
+    <div class="col-3">
+        <div class="form-check">
+            <label class="form-check-label"><InputCheckbox class="form-check-input" @bind-Value="UseToDate"></InputCheckbox> To Date</label>
+        </div>
+        <InputDate @bind-Value="ToDate" class="form-control" disabled="@(!UseToDate)"></InputDate>
+    </div>
+    <div class="col-3">
+        <div class="form-check">
+            <label class="form-check-label"><InputCheckbox class="form-check-input" @bind-Value="OrderDescending"></InputCheckbox> Reversed order</label>
+        </div>
+        <button class="btn btn-primary" @onclick="async () => await DoSearchClicked()">Search</button>
+    </div>
+    <div class="col-3">
+        <div class="float-end">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <InputText @bind-Value="FilterText" class="form-control" placeholder="Filter..." @oninput="OnFilterTextChanged"></InputText>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Card Number</th>
+            <th>Location</th>
+            <th>Person ID</th>
+            <th>Name</th>
+            <th>End Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var record in FilteredActivity)
+        {
+            <tr>
+                <td>@record.EventTime?.ToString("dddd, d MMM")</td>
+                <td>@record.EventTime?.ToString("h:mm tt")</td>
+                <td>
+                    @if (record.PersonId.HasValue && record.EntraCardNumber != record.SportyCardNumber)
+                    {
+                        <div><b>EntraPass:</b> @record.EntraCardNumber</div>
+                        <div><b>CRM:</b> @record.SportyCardNumber</div>
+                    }
+                    else
+                    {
+                        <div>@record.EntraCardNumber</div>
+                    }
+                </td>
+                <td>@record.EntraLocation</td>
+                <td>
+                    @if (record.PersonId.HasValue && record.PersonId != record.EntraPersonId)
+                    {
+                        <div><b>EntraPass:</b> @record.EntraCardUserName</div>
+                        <div><b>CRM:</b> @record.PersonId</div>
+                    }
+                    else
+                    {
+                        if (record.PersonId.HasValue)
+                        {
+                            <div>@record.PersonId</div>
+                        }
+                        else
+                        {
+                            <div>@record.EntraCardUserName</div>
+                        }
+                    }
+                </td>
+                <td>
+                    @if (!String.IsNullOrEmpty(record.EntraInfo1) && record.EntraInfo1.ToLowerInvariant() != record.FullName.ToLowerInvariant())
+                    {
+                        <div><b>EntraPass:</b> @record.EntraInfo1</div>
+                        <div><b>CRM:</b> @record.FullName</div>
+                    }
+                    else
+                    {
+                        <div>@record.FullName</div>
+                    }
+                </td>
+                <td>
+                    @if (record.RegistrationDate < DateTime.Today.AddMonths(-14))
+                    {
+                        <div class="text-danger"><i class="bi bi-x-circle-fill" /> <b>Reg:</b> @record.RegistrationDate?.ToString("dd/MM/yyyy")</div>
+                    }
+                    else
+                    {
+                        <div class="text-success"><i class="bi bi-check-circle-fill" /> <b>Reg:</b> @record.RegistrationDate?.ToString("dd/MM/yyyy")</div>
+                    }
+
+                    @if (record.EntraEndDate < DateTime.Today)
+                    {
+                        <div class="text-danger"><i class="bi bi-x-circle-fill" /> <b>End:</b> @record.EntraEndDate?.ToString("dd/MM/yyyy")</div>
+                    }
+                    else
+                    {
+                        <div class="text-success"><i class="bi bi-check-circle-fill" /> <b>End:</b> @record.EntraEndDate?.ToString("dd/MM/yyyy")</div>
+                    }
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>

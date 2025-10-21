@@ -6,6 +6,8 @@ namespace Attendance.Data;
 
 public class MemberRecord
 {
+    public DateTime? EventTime { get; set; }
+
     public int? PersonId { get; set; }
     public string? SportyCardNumber { get; set; }
     public DateTime? RegistrationDate { get; set; }
@@ -20,6 +22,7 @@ public class MemberRecord
     public string? EntraCardNumber { get; set; }
     public string? EntraCardUserName { get; set; }
     public string? EntraInfo1 { get; set; }
+    public string? EntraLocation { get; set; }
     public DateTime? EntraEndDate { get; set; }
 
     public string FullName => $"{FirstName} {LastName}".Trim();

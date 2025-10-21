@@ -1,4 +1,4 @@
-﻿@page "/card-usage/{CardNumber}"
+﻿@page "/cards/{CardNumber}"
 @rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject IAttendanceManager AttendanceManager
@@ -23,7 +23,7 @@
         var model = new MemberHistoryViewModel(year);
         model.CardNumber = cardNumber ?? string.Empty;
 
-        var attendance = await AttendanceManager.GetEntryExitsAsync(Model.StartDate, Model.EndDate, cardNumber);
+        var attendance = await AttendanceManager.GetEntryExitsAsync(Model.StartDate, Model.EndDate, model.CardNumber);
         foreach (var record in attendance)
         {
             if (record.EntryTime == null && record.ExitTime == null && record.RangeTime == null)
