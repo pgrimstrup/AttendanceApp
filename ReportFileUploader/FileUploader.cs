@@ -87,8 +87,13 @@ public sealed class FileUploader
                             try
                             {
                                 fs.Dispose(); // ensure file handle is closed before delete
-                                File.Delete(path);
-                                _logger.LogInformation("Deleted file after successful upload: {Path}", path);
+
+                                // Delete all files with the same base name
+                                foreach (var fileToDelete in Directory.GetFiles(folder, Path.GetFileNameWithoutExtension(path) + ".*"))
+                                {
+                                    File.Delete(fileToDelete);
+                                    _logger.LogInformation("Deleted file after successful upload: {Path}", fileToDelete);
+                                }
                             }
                             catch (Exception delEx)
                             {
