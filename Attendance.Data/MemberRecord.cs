@@ -19,5 +19,8 @@ public class MemberRecord
     public int? EntraPersonId { get; set; }
     public string? EntraCardNumber { get; set; }
     public string? EntraCardUserName { get; set; }
+    public string? EntraInfo1 { get; set; }
     public DateTime? EntraEndDate { get; set; }
+
+    public string FullName => $"{FirstName} {LastName}".Trim();
 }

@@ -10,11 +10,13 @@ public class MemberHistoryViewModel
 
     public int Year { get; set; }
     public string PNZNumber { get; set; } = string.Empty;
+    public string CardNumber { get; set; } = string.Empty;
 
-    public MemberHistoryViewModel(int? year, string? pnzNumber)
+    public bool IsPNZMember => !String.IsNullOrWhiteSpace(PNZNumber);
+
+    public MemberHistoryViewModel(int? year)
     {
         Year = year ?? (DateTime.Today.Month >= 7 ? DateTime.Today.Year : (DateTime.Today.Year - 1));
-        PNZNumber = pnzNumber ?? string.Empty;
         _startTime = new DateTime(Year, 7, 1);
         _endTime = new DateTime(Year + 1, 7, 1);
 

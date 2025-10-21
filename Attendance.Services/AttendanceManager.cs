@@ -32,11 +32,11 @@ public interface IAttendanceManager
 public class AttendanceManager : IAttendanceManager
 {
 	static string MembersQuery = @"
-WITH CardUsers(EntraPersonId, EntraCardNumber, EntraCardUserName, EntraEndDate) AS (
+WITH CardUsers(EntraPersonId, EntraCardNumber, EntraCardUserName, EntraInfo1, EntraEndDate) AS (
 	SELECT 
-		PersonId, CardNumber, CardUserName, MAX(ExpiryDate)
+		PersonId, CardNumber, CardUserName, CardInfo1, MAX(ExpiryDate)
 	FROM EntraPassImport
-	GROUP BY PersonId, CardNumber, CardUserName
+	GROUP BY PersonId, CardNumber, CardUserName, CardInfo1
 )
 SELECT 
 	s.PersonId, s.CardNumber SportyCardNumber, 

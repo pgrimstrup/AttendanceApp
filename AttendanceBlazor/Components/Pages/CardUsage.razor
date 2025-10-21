@@ -9,7 +9,7 @@
     [Parameter]
     public string CardNumber { get; set; } = string.Empty;
 
-    public MemberHistoryViewModel Model { get; set; } = new(null, null);
+    public MemberHistoryViewModel Model { get; set; } = new(null);
 
 
     protected override async Task OnInitializedAsync()
@@ -18,9 +18,10 @@
         Model = await LoadModelData(Model.Year, CardNumber);
     }
 
-    private async Task<MemberHistoryViewModel> LoadModelData(int? year, string cardNumber)
+    private async Task<MemberHistoryViewModel> LoadModelData(int? year, string? cardNumber)
     {
-        var model = new MemberHistoryViewModel(year, cardNumber);
+        var model = new MemberHistoryViewModel(year);
+        model.CardNumber = cardNumber ?? string.Empty;
 
         var attendance = await AttendanceManager.GetEntryExitsAsync(Model.StartDate, Model.EndDate, cardNumber);
         foreach (var record in attendance)
@@ -31,87 +32,117 @@
                 continue;
             }
 
+            if (!String.IsNullOrEmpty(record.PNZNumber))
+                model.PNZNumber = record.PNZNumber;
             model.Attendance.Add(new AttendanceViewModel(record));
         }
         model.Attendance.Sort((a, b) => a.EventDate.CompareTo(b.EventDate));
 
-        var swipeEvents = await AttendanceManager.GetSwipeCardEventsAsync(Model.StartDate, Model.EndDate, CardNumber);
+        // show all events for this card
+        var swipeEvents = await AttendanceManager.GetSwipeCardEventsAsync(Model.StartDate, Model.EndDate, model.CardNumber);
         model.SwipeEvents.AddRange(swipeEvents);
 
         return model;
     }
-
-    private string ShortenName(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return string.Empty;
-        }
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 1)
-            return name;
-
-        return $"{parts[0]} {parts[^1].Substring(0, 1)}";
-    }
-
 }
 
-<h2 style="text-align:center">Entry/Exits for Card Number @CardNumber</h2>
+<h2 style="text-align:center">Entry/Exits for Card Number @Model.CardNumber</h2>
 <h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.EndDate.ToString("d MMMM yyyy")</h3>
 <div style="text-align: center">Last updated @Model.LastUpdated.ToString("dd/MM/yyyy h:mm tt")</div>
 
-<table class="table table-striped table-sm">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Entry time</th>
-            <th>On Range</th>
-            <th>Exit time</th>
-            <th>Time on range</th>
-            <th>Card number</th>
-            <th>Name</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var record in Model.Attendance)
-        {
+@if (Model.Attendance.Count == 0)
+{
+    <div class="alert alert-info p-3 w-50 my-3 mx-auto text-center">
+        <p>This card has either not been used or is not linked to a club member in the CRM.</p>
+        <p>If the card shows activity below, then it is likely that the card is incorrectly linked in the CRM and EntraPass.</p>
+    </div>
+}
+else
+{
+    <table class="table table-striped table-sm">
+        <thead>
             <tr>
-                <td>@record.EventTitle</td>
-                @if (record.IsAwayEvent)
-                {
-                    <td style="text-align:center"><i class="bi bi-duffle" style="font-size: 18px" /></td>
-                    <td colspan="3">@($"{record.AwayLocation} - {record.AwayEventName}".Trim(' ', '-'))</td>
-                }
-                else
-                {
+                <th>Date</th>
+                <th style="text-align:center">B-Match</th>
+                <th>Entry time</th>
+                <th>On Range</th>
+                <th>Exit time</th>
+                <th style="text-align:center">Counted</th>
+                <th>Time on range</th>
+                <th>Card number</th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var record in Model.Attendance)
+            {
+                <tr>
+                    <td>@record.EventTitle</td>
+                    <td style="text-align:center">
+                        @if (record.IsMatchDay)
+                        {
+                            <i class="bi bi-calendar-check" style="font-size: 18px" />
+                        }
+                    </td>
                     <td>@record.EntryTime</td>
-                    @if (record.IsIncluded)
+                    @if (Model.IsPNZMember)
                     {
-                        <td class="text-success"><i class="bi bi-person-check" style="font-size: 18px" /><span class="small"> Counted</span></td>
-                    }
-                    else if (record.IsExcluded)
-                    {
-                        <td class="text-danger"><i class="bi bi-x-circle" style="font-size: 18px" /><span class="small"> Excluded</span></td>
-                    }
-                    else if (!record.IsMatchDay && record.IsRangeClosed)
-                    {
-                        <td class="text-warning"><i class="bi bi-lock-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
+                        if (record.IsIncluded)
+                        {
+                            <td class="text-success"><i class="bi bi-person-check-fill" style="font-size: 18px" /><span class="small"> Counted</span></td>
+                        }
+                        else if (record.IsExcluded)
+                        {
+                            <td class="text-danger"><i class="bi bi-x-circle-fill" style="font-size: 18px" /><span class="small"> Excluded</span></td>
+                        }
+                        else if (!record.IsMatchDay && record.IsRangeClosed)
+                        {
+                            <td class="text-warning"><i class="bi bi-lock-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
+                        }
+                        else if(record.IsAwayEvent)
+                        {
+                            <td class="text-success"><i class="bi bi-duffle-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
+                        }
+                        else
+                        {
+                            <td>@record.RangeTime</td>
+                        }
                     }
                     else
                     {
                         <td>@record.RangeTime</td>
                     }
                     <td>@record.ExitTime</td>
-                }
+                    <td style="text-align:center">
+                        @if (Model.IsPNZMember && record.IsCounted)
+                        {
+                            <i class="bi bi-check2-square" style="font-size: 18px" />
+                        }
+                    </td>
 
-                <td>@record.TimeOnRange</td>
-                <td>@record.CardNumber</td>
-                <td>@record.FullName</td>
+                    <td>@record.TimeOnRange</td>
+                    <td>@record.CardNumber</td>
+                    <td>@record.FullName</td>
+                </tr>
+            }
+        </tbody>
+        @if(Model.IsPNZMember)
+        {
+        <tfoot>
+            <tr>
+                <th style="text-align:end">Number of match days attended:</th>
+                <th style="text-align:center">@Model.TotalMatchDays</th>
+                <th style="text-align:end" colspan="3">Number of events counted:</th>
+                <th style="text-align:center">@Model.TotalEventsCounted</th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
             </tr>
+        </tfoot>
         }
-    </tbody>
-</table>
-
+    </table>
+}
 
 <hr />
 <h2 style="text-align: center" class="mt-5">All Activity</h2>
