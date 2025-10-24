@@ -1,29 +1,30 @@
 ﻿@page "/UploadSporty"
 @rendermode InteractiveServer
-
 @inject ISportyRegistrationImporter Importer
 @inject IJSRuntime JS
 
 <PageTitle>Upload Sporty CSV | RRGC Attendance</PageTitle>
-<h3>Upload Sporty CSV</h3>
+<AuthorizeView Roles="Admin">
+    <NotAuthorized>
+        <AttendanceBlazor.Components.Parts.LoginComponent ReturnUrl="/UploadSporty">
+        </AttendanceBlazor.Components.Parts.LoginComponent>
+    </NotAuthorized>
+    <Authorized>
+        <h3>Upload Sporty CSV</h3>
 
-@* <div>
-    <label class="form-check-label">
-        <InputCheckbox @bind-Value="CreateTestData" class="form-check-input"></InputCheckbox> Create Test Data from the selected file (response will be a downloadable .csv file)
-    </label>
-</div>
- *@
+        <div class="my-3">
+            <label for="File" class="form-label">Choose CSV File:</label>
+            <InputFile OnChange="HandleFileSelected" class="form-control" />
+        </div>
 
-<div class="my-3">
-	<label for="File" class="form-label">Choose CSV File:</label>
-	<InputFile OnChange="HandleFileSelected" class="form-control" />
-</div>
+        @if (!string.IsNullOrEmpty(UploadMessage))
+        {
+            <div class="alert @AlertType mt-3">@UploadMessage</div>
+        }
 
-@if (!string.IsNullOrEmpty(UploadMessage))
-{
-    <div class="alert @AlertType mt-3">@UploadMessage</div>
-}
 
+    </Authorized>
+</AuthorizeView>
 
 @code {
     public string? UploadMessage;

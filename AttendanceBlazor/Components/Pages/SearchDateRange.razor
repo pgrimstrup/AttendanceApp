@@ -1,0 +1,41 @@
+﻿@page "/daterange/{FromDate:datetime?}/{ToDate:datetime?}"
+
+<PageTitle>Date Range Search | RRGC Attendance</PageTitle>
+
+
+@code{
+    [Parameter]
+    public DateTime? FromDate { get; set; } 
+
+    [Parameter]
+    public DateTime? ToDate { get; set; } 
+
+    string ReturnUrl
+    {
+        get
+        {
+            var url = "/daterange";
+            if (FromDate.HasValue)
+            {
+                url += $"/{FromDate.Value:yyyy-MM-dd}";
+                if(ToDate.HasValue)
+                {
+                    url += $"/{ToDate.Value:yyyy-MM-dd}";
+                }
+            }
+
+            return url;
+        }
+    }
+}
+
+<AuthorizeView Roles="Admin">
+    <NotAuthorized>
+        <LoginComponent ReturnUrl="@ReturnUrl" />
+    </NotAuthorized>
+    <Authorized>
+        <DateRangeComponent FromDate="@FromDate" ToDate="@ToDate" />
+    </Authorized>
+</AuthorizeView>
+
+

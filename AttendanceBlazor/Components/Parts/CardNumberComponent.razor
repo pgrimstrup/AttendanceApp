@@ -1,15 +1,12 @@
-﻿@page "/cards/{CardNumber}"
-@rendermode InteractiveServer
+﻿@rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject IAttendanceManager AttendanceManager
-
-<PageTitle>Card Usage | RRGC Attendance</PageTitle>
 
 @code {
     [Parameter]
     public string CardNumber { get; set; } = string.Empty;
 
-    public MemberHistoryViewModel Model { get; set; } = new(null);
+    MemberHistoryViewModel Model { get; set; } = new(null);
 
 
     protected override async Task OnInitializedAsync()
@@ -99,7 +96,7 @@ else
                         {
                             <td class="text-warning"><i class="bi bi-lock-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
                         }
-                        else if(record.IsAwayEvent)
+                        else if (record.IsAwayEvent)
                         {
                             <td class="text-success"><i class="bi bi-duffle-fill" style="font-size: 18px" /><span class="small"> Range Closed</span></td>
                         }
@@ -126,20 +123,20 @@ else
                 </tr>
             }
         </tbody>
-        @if(Model.IsPNZMember)
+        @if (Model.IsPNZMember)
         {
-        <tfoot>
-            <tr>
-                <th style="text-align:end">Number of match days attended:</th>
-                <th style="text-align:center">@Model.TotalMatchDays</th>
-                <th style="text-align:end" colspan="3">Number of events counted:</th>
-                <th style="text-align:center">@Model.TotalEventsCounted</th>
-                <th></th>
-                <th></th>
-                <th></th>
-                <th></th>
-            </tr>
-        </tfoot>
+            <tfoot>
+                <tr>
+                    <th style="text-align:end">Number of match days attended:</th>
+                    <th style="text-align:center">@Model.TotalMatchDays</th>
+                    <th style="text-align:end" colspan="3">Number of events counted:</th>
+                    <th style="text-align:center">@Model.TotalEventsCounted</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </tfoot>
         }
     </table>
 }

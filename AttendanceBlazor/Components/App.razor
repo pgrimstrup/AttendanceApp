@@ -14,6 +14,15 @@
     <HeadOutlet />
 </head>
 
+@code {
+        public static bool IsDevelopment()
+#if DEBUG
+            => true;
+#else
+            => false;
+#endif
+}
+
 <body>
     <Routes />
     <ReconnectModal />
@@ -28,6 +37,39 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+
+        function authCodeKeyDown(currentInput, prev, event){
+            if(event.keyCode == 8){
+                if(currentInput.value.length <= 0){
+                    const prevInput = document.getElementById(prev);
+                    if(prevInput){
+                        prevInput.value = "";
+                        prevInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        prevInput.focus();
+                    }
+                }
+            }
+            return true;
+        }
+
+
+
+        function authCodeKeyUp(currentInput, next, event){
+            if(currentInput.value.length >= currentInput.maxLength){
+                const nextInput = document.getElementById(next);
+                if(nextInput){
+                    nextInput.focus();
+                    nextInput.select();
+                }else{
+                    currentInput.select();
+                    currentInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }else{
+                currentInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return true;
+        }
+
     </script>
 </body>
 

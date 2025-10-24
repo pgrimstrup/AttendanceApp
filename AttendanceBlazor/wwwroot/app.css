@@ -64,3 +64,28 @@ h1:focus {
 .small{
     font-size: small;
 }
+
+.authentication-login {
+    font-size: 20pt;
+    border: solid 1px #DDD;
+    border-radius: 7px;
+    text-align: left;
+    color: #666;
+    text-transform: uppercase;
+}
+.authentication-code{
+    font-size:20pt;
+    border: solid 1px #DDD;
+    border-radius: 7px;
+    width: 40px;
+    text-align: center;
+    color: #666;
+    text-transform: uppercase;
+}
+.authentication-code-text {
+    font-size: 20pt;
+    font-weight: bold;
+    text-align: center;
+    color: #666;
+    text-transform: uppercase;
+}

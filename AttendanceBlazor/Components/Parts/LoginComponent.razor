@@ -1,0 +1,188 @@
+﻿@using System.Diagnostics
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+
+@code {
+
+    [Parameter] public string ReturnUrl { get; set; } = string.Empty;
+    [Parameter] public string PNZNumber { get; set; } = string.Empty;
+    [Parameter] public string CardNumber { get; set; } = string.Empty;
+    [Parameter] public string AuthCode { get; set; } = string.Empty;
+
+
+    int AuthMode { get; set; }
+    int AuthMethod { get; set; }
+
+    bool UsePNZNumber => AuthMode == 0;
+    bool UseCardNumber => AuthMode == 1;
+
+    string? CardNumberDisabled => UseCardNumber ? null : "disabled";
+
+    string? CC1 { get; set; }
+    string? CC2 { get; set; }
+    string? CC3 { get; set; }
+    string? CC4 { get; set; }
+    string? CC5 { get; set; }
+    string? CC6 { get; set; }
+    string? CC7 { get; set; }
+    string? CC8 { get; set; }
+    string? CC9 { get; set; }
+
+
+    string? AC1 { get; set; }
+    string? AC2 { get; set; }
+    string? AC3 { get; set; }
+    string? AC4 { get; set; }
+    string? AC5 { get; set; }
+    string? AC6 { get; set; }
+    string? AC7 { get; set; }
+    string? AC8 { get; set; }
+
+    string GetCardNumber()
+    {
+        return $"{CC1}{CC2}{CC3}{CC4}:{CC5}{CC6}{CC7}{CC8}{CC9}".Trim().ToUpperInvariant();
+    }
+
+    string GetAuthCode()
+    {
+        return $"{AC1}{AC2}{AC3}{AC4}{AC5}{AC6}{AC7}{AC8}".Trim().ToUpperInvariant();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if(!String.IsNullOrWhiteSpace(PNZNumber))
+         {
+             AuthMode = 0;
+         }
+
+        // Example: card=02E0:00001 -> split across CC1..CC9
+        if (!String.IsNullOrWhiteSpace(CardNumber))
+        {
+            var raw = CardNumber.Replace(":", "").Trim() ?? string.Empty;
+
+            CC1 = raw.Length > 0 ? raw[0].ToString() : null;
+            CC2 = raw.Length > 1 ? raw[1].ToString() : null;
+            CC3 = raw.Length > 2 ? raw[2].ToString() : null;
+            CC4 = raw.Length > 3 ? raw[3].ToString() : null;
+            CC5 = raw.Length > 4 ? raw[4].ToString() : null;
+            CC6 = raw.Length > 5 ? raw[5].ToString() : null;
+            CC7 = raw.Length > 6 ? raw[6].ToString() : null;
+            CC8 = raw.Length > 7 ? raw[7].ToString() : null;
+            CC9 = raw.Length > 8 ? raw[8].ToString() : null;
+            AuthMode = 1;
+        }
+    }
+
+    void SendAuthenticationCode()
+    {
+        StateHasChanged();
+    }
+}
+
+<h3>Authentication Required</h3>
+
+<p>Access to further details requires additional authentication.</p>
+
+<div class="row">
+    <div class="col-sm-12 col-lg-9">
+        <p>
+            You can login using your PNZ Number or your Gate Access Card number.
+            We will send the Authentication Code to the email address or phone number we have on file that is associated with the PNZ Number or Gate Access Card number.
+            This code will expire in 30 minutes. You can always request another code if you need to.
+        </p>
+
+        <label class="form-label fw-bold">Select Login Type</label>
+        <InputRadioGroup Name="AuthMode" @bind-Value="AuthMode">
+            <div>
+                <div class="form-check">
+                    <label class="form-check-label">
+                        <InputRadio class="form-check-input" Value="0"></InputRadio> PNZ Number
+                    </label>
+                </div>
+                <div class="mx-4">
+                    <InputText class="authentication-login" @bind-Value="PNZNumber" disabled="@(!UsePNZNumber)" maxlength="10"></InputText>
+                </div>
+            </div>
+            <div class="mt-2">
+                <div class="form-check">
+                    <label class="form-check-label">
+                        <InputRadio class="form-check-input" Value="1"></InputRadio> Gate Access Card Number (such as 02E0:00001)
+                    </label>
+                </div>
+                <div class="mx-4">
+                    <InputText @bind-Value="CC1" id="cc1" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeyup="authCodeKeyUp(this, 'cc2', event)" />
+                    <InputText @bind-Value="CC2" id="cc2" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc1', event)" onkeyup="authCodeKeyUp(this, 'cc3', event)" />
+                    <InputText @bind-Value="CC3" id="cc3" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc2', event)" onkeyup="authCodeKeyUp(this, 'cc4', event)" />
+                    <InputText @bind-Value="CC4" id="cc4" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc3', event)" onkeyup="authCodeKeyUp(this, 'cc5', event)" />
+                    <span class="authentication-code-text"> : </span>
+                    <InputText @bind-Value="CC5" id="cc5" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc4', event)" onkeyup="authCodeKeyUp(this, 'cc6', event)" />
+                    <InputText @bind-Value="CC6" id="cc6" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc5', event)" onkeyup="authCodeKeyUp(this, 'cc7', event)" />
+                    <InputText @bind-Value="CC7" id="cc7" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc6', event)" onkeyup="authCodeKeyUp(this, 'cc8', event)" />
+                    <InputText @bind-Value="CC8" id="cc8" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc7', event)" onkeyup="authCodeKeyUp(this, 'cc9', event)" />
+                    <InputText @bind-Value="CC9" id="cc9" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc8', event)" onkeyup="authCodeKeyUp(this, null, event)" />
+                </div>
+            </div>
+        </InputRadioGroup>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <label class="form-label fw-bold">Select Two-Factor Authentication Method</label>
+        <InputRadioGroup Name="AuthMethod" @bind-Value="AuthMethod">
+            <div class="form-check">
+                <label class="form-check-label">
+                    <InputRadio class="form-check-input" Value="0"></InputRadio> By Email
+                </label>
+            </div>
+            <div class="form-check">
+                <label class="form-check-label">
+                    <InputRadio class="form-check-input" Value="1"></InputRadio> By SMS
+                </label>
+            </div>
+        </InputRadioGroup>
+    </div>
+</div>
+<div class="row mt-3">
+    <div class="col-12">
+        <button class="btn btn-primary" @onclick="SendAuthenticationCode">Send Code</button>
+    </div>
+</div>
+<hr class="my-4" />
+<div class="row5">
+    <div class="col-12">
+        <label class="form-label fw-bold">Enter the Authentication Code</label>
+        <div>
+            <InputText @bind-Value="AC1" id="ac1" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeyup="authCodeKeyUp(this, 'ac2', event)" />
+            <InputText @bind-Value="AC2" id="ac2" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac1', event)" onkeyup="authCodeKeyUp(this, 'ac3', event)" />
+            <span>&nbsp;</span>
+            <InputText @bind-Value="AC3" id="ac3" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac2', event)" onkeyup="authCodeKeyUp(this, 'ac4', event)" />
+            <InputText @bind-Value="AC4" id="ac4" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac3', event)" onkeyup="authCodeKeyUp(this, 'ac5', event)" />
+            <span>&nbsp;</span>
+            <InputText @bind-Value="AC5" id="ac5" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac4', event)" onkeyup="authCodeKeyUp(this, 'ac6', event)" />
+            <InputText @bind-Value="AC6" id="ac6" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac5', event)" onkeyup="authCodeKeyUp(this, 'ac7', event)" />
+            <span>&nbsp;</span>
+            <InputText @bind-Value="AC7" id="ac7" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac6', event)" onkeyup="authCodeKeyUp(this, 'ac8', event)" />
+            <InputText @bind-Value="AC8" id="ac8" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac7', event)" onkeyup="authCodeKeyUp(this, null, event)" />
+        </div>
+    </div>
+</div>
+<form method="post" action="/api/authenticate">
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="form-check">
+                <label class="form-check-label"><input type="checkbox" class="form-check-input" name="RememberMe" value="true" /> Remember me on this device</label>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-12">
+            <input type="hidden" name="PNZNumber" value="@(UsePNZNumber? PNZNumber : "")" />
+            <input type="hidden" name="CardNumber" value="@(UseCardNumber? GetCardNumber() : "")" />
+            <input type="hidden" name="AuthCode" value="@GetAuthCode()" />
+            <input type="hidden" name="Nonce" value="@Guid.NewGuid()" />
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+            <button class="btn btn-primary" type="submit">Authenticate</button>
+        </div>
+    </div>
+</form>

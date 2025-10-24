@@ -1,0 +1,10 @@
+﻿@page "/account/login"
+
+@code {
+    [Parameter, SupplyParameterFromQuery(Name = "ReturnUrl")] 
+    public string ReturnUrl { get; set; } = "";
+}
+
+<PageTitle>Member Login | RRGC Attendance</PageTitle>
+<LoginComponent ReturnUrl="@ReturnUrl" />
+

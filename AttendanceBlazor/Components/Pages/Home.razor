@@ -1,10 +1,10 @@
 ﻿@page "/"
 @rendermode InteractiveServer
-@inject NavigationManager NavigationManager
 @inject IAttendanceManager AttendanceManager
 
 @code {
 
+    bool _disposed;
     public HomeViewModel Model { get; set; } = new(null);
 
     protected override async Task OnInitializedAsync()
@@ -14,15 +14,20 @@
         Model = await LoadModelData(null);
     }
 
+    public void Dispose()
+    {
+        _disposed = true;
+    }
+
 
     private async Task<HomeViewModel> LoadModelData(int? year)
     {
         var model = new HomeViewModel(year);
 
         var summaries = AttendanceManager.GetAttendanceSummariesAsync(Model.StartDate, Model.EndDate);
-        foreach(var summary in await summaries)
+        foreach (var summary in await summaries)
         {
-            switch(summary.Sections)
+            switch (summary.Sections)
             {
                 case SectionTags.CAS:
                     model.CAS.Add(summary);
@@ -51,6 +56,7 @@
 
 <PageTitle>RRGC Attendance</PageTitle>
 
+
 <div>
     <h2 style="text-align:center">Current @Model.YearTitle shoot counts, by PNZ number, by Section</h2>
     <h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.EndDate.ToString("d MMMM yyyy")</h3>
@@ -72,17 +78,26 @@
                 @if (Model.MultiGun.Count == 0)
                 {
                     <tr>
-                        <td colspan="2" align="center" >
+                        <td colspan="2" align="center">
                             <div class="bg-info text-white m-3">No data</div>
                         </td>
                     </tr>
                 }
                 else
                 {
-                    @foreach(var item in Model.MultiGun)
+                    @foreach (var item in Model.MultiGun)
                     {
                         <tr>
-                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
+                            <td>
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <b>@item.PNZNumber</b>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            </td>
                             <td>@item.Count</td>
                         </tr>
                     }
@@ -116,7 +131,16 @@
                     @foreach (var item in Model.CAS)
                     {
                         <tr>
-                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
+                            <td>
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <b>@item.PNZNumber</b>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            </td>
                             <td>@item.Count</td>
                         </tr>
                     }
@@ -150,7 +174,16 @@
                     @foreach (var item in Model.IPSC)
                     {
                         <tr>
-                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
+                            <td>
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <b>@item.PNZNumber</b>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            </td>
                             <td>@item.Count</td>
                         </tr>
                     }
@@ -183,7 +216,16 @@
                     @foreach (var item in Model.ISSF)
                     {
                         <tr>
-                            <td><NavLink href="@("/attendance/" + item.PNZNumber)">@item.PNZNumber</NavLink></td>
+                            <td>
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <b>@item.PNZNumber</b>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            </td>
                             <td>@item.Count</td>
                         </tr>
                     }

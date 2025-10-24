@@ -1,59 +1,58 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Attendance.Services;
 
-namespace AttendanceBlazor.Controllers
+namespace AttendanceBlazor.Controllers;
+
+[ApiController]
+[Route("api/upload")]
+public class FileUploadController : ControllerBase
 {
-    [ApiController]
-    [Route("api/upload")]
-    public class FileUploadController : ControllerBase
+    private readonly IEntraPassImporter _importer;
+
+    public FileUploadController(IEntraPassImporter importer)
     {
-        private readonly IEntraPassImporter _importer;
+        _importer = importer;
+    }
 
-        public FileUploadController(IEntraPassImporter importer)
+    [HttpGet("entrapass")]
+    public IActionResult Get()
+    {
+        return StatusCode(405, "GET method is not allowed. Please use POST to upload a file.");
+    }
+
+    [HttpPost("entrapass")]
+    public async Task<IActionResult> PostAsync(IFormFile csvFile)
+    {
+        if (csvFile == null || csvFile.Length == 0)
         {
-            _importer = importer;
+            return BadRequest("No file uploaded.");
         }
 
-        [HttpGet("entrapass")]
-        public IActionResult Get()
+        if (csvFile.ContentType != "text/csv")
         {
-            return StatusCode(405, "GET method is not allowed. Please use POST to upload a file.");
+            return BadRequest("Invalid file type. Only CSV files are allowed.");
         }
 
-        [HttpPost("entrapass")]
-        public async Task<IActionResult> PostAsync(IFormFile csvFile)
+        try
         {
-            if (csvFile == null || csvFile.Length == 0)
-            {
-                return BadRequest("No file uploaded.");
-            }
+            using var stream = csvFile.OpenReadStream();
+            using var mem = new MemoryStream();
+            await stream.CopyToAsync(mem);
+            mem.Position = 0;
 
-            if (csvFile.ContentType != "text/csv")
+            var result = await _importer.Import(mem);
+            if (result)
             {
-                return BadRequest("Invalid file type. Only CSV files are allowed.");
+                return Ok(new { Message = "File uploaded and processed successfully." });
             }
-
-            try
+            else
             {
-                using var stream = csvFile.OpenReadStream();
-                using var mem = new MemoryStream();
-                await stream.CopyToAsync(mem);
-                mem.Position = 0;
-
-                var result = await _importer.Import(mem);
-                if (result)
-                {
-                    return Ok(new { Message = "File uploaded and processed successfully." });
-                }
-                else
-                {
-                    return BadRequest("File could not be processed. Ensure it is in the expected format.");
-                }
+                return BadRequest("File could not be processed. Ensure it is in the expected format.");
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
 }

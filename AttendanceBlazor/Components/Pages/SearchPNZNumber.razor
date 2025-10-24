@@ -1,0 +1,19 @@
+﻿@page "/pnznumber/{PNZNumber}"
+
+@code{
+    [Parameter]
+    public string PNZNumber { get; set; } = string.Empty;
+
+    string ReturnUrl => $"/pnznumber/{PNZNumber}";
+}
+
+<PageTitle>PNZ Number @PNZNumber | RRGC Attendance</PageTitle>
+
+<AuthorizeView Roles="Admin,PNZ">
+    <NotAuthorized>
+        <LoginComponent ReturnUrl="@ReturnUrl" />
+    </NotAuthorized>
+    <Authorized>
+        <PNZNumberComponent PNZNumber="@PNZNumber" />
+    </Authorized>
+</AuthorizeView>

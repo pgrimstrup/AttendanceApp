@@ -1,0 +1,30 @@
+﻿@rendermode InteractiveServer
+@inject NavigationManager Navigation
+
+@code {
+    void GoToLoginPage()
+    {
+        var uri = new Uri(Navigation.Uri);
+        Navigation.NavigateTo($"/account/login?returnUrl={Uri.EscapeDataString(uri.PathAndQuery)}", true);
+    }
+}
+
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <form method="post" action="/account/logout">
+            @if (context.User.IsInRole("Admin"))
+            {
+                <button type="submit" class="btn btn-warning" >Logout @context?.User?.Identity?.Name (Admin)</button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-outline-secondary" >Logout @context?.User?.Identity?.Name</button>
+            }
+            </form>
+        </Authorized>
+        <NotAuthorized>
+            <button class="btn btn-outline-secondary" @onclick="GoToLoginPage">Login</button>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>

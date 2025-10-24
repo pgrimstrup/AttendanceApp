@@ -1,0 +1,84 @@
+﻿@code {
+    [Parameter]
+    public List<MemberRecord> Activity { get; set; } = new();
+
+    string GenerateKey(MemberRecord record)
+    {
+        return $"{record.EntraCardNumber}_{record.EventTime:yyyy-MM-ddTHH:mm:ss}";
+    }
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Card Number</th>
+            <th>Location</th>
+            <th>Person ID</th>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var record in Activity)
+        {
+            <tr @key="GenerateKey(record)">
+                <td>@record.EventTime?.ToString("dddd, d MMM")</td>
+                <td>@record.EventTime?.ToString("h:mm tt")</td>
+                <td>
+                    @if (record.PersonId.HasValue && record.EntraCardNumber != record.SportyCardNumber)
+                    {
+                        <div><b>EntraPass:</b> <NavLink href="@($"/cardnumber/{record.EntraCardNumber}")">@record.EntraCardNumber</NavLink></div>
+                        <div><b>CRM:</b> @record.SportyCardNumber</div>
+                        <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Update CRM with correct Card Number</div>
+                    }
+                    else
+                    {
+                        <div><NavLink href="@($"/cardnumber/{record.EntraCardNumber}")">@record.EntraCardNumber</NavLink></div>
+                        @if (record.PersonId == null)
+                        {
+                            <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Not linked to a CRM Person ID</div>
+                        }
+                    }
+                </td>
+                <td>@record.EntraLocation</td>
+                <td>
+                    @if (record.PersonId.HasValue && record.PersonId != record.EntraPersonId)
+                    {
+                        <div><b>EntraPass:</b> @record.EntraCardUserName</div>
+                        <div><b>CRM:</b> @record.PersonId</div>
+                        <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Update EntraPass with correct Person ID</div>
+                    }
+                    else
+                    {
+                        if (record.PersonId.HasValue)
+                        {
+                            <div>@record.PersonId</div>
+                        }
+                        else
+                        {
+                            <div>@record.EntraCardUserName</div>
+                        }
+                    }
+                </td>
+                <td>
+                    @if (!String.IsNullOrEmpty(record.EntraInfo1) && record.EntraInfo1.ToLowerInvariant() != record.FullName.ToLowerInvariant())
+                    {
+                        <div><b>EntraPass:</b> @record.EntraInfo1</div>
+                        <div><b>CRM:</b> @record.FullName</div>
+                        <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Update EntraPass with correct Full Name</div>
+                    }
+                    else
+                    {
+                        <div>@record.FullName</div>
+                    }
+                    @if (!String.IsNullOrWhiteSpace(record.PNZNumber))
+                    {
+                        <div><b>PNZ:</b> <NavLink href="@($"/pnznumber/{record.PNZNumber}")">@record.PNZNumber</NavLink></div>
+                    }
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>

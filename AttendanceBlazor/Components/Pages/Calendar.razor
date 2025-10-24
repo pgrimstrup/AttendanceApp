@@ -148,7 +148,11 @@
                                 <div>
                                     @if (!day.IsDisabled)
                                     {
-                                        <input type="checkbox" class="form-check-input float-end m-2" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleClosedDay(day)" />
+                                        <AuthorizeView Roles="Admin">
+                                            <Authorized>
+                                                <input type="checkbox" class="form-check-input float-end m-2" checked="@day.IsChecked" disabled="@day.IsDisabled" @onchange="async () => await ToggleClosedDay(day)" />
+                                            </Authorized>
+                                        </AuthorizeView>
                                     }
                                     <div class="day-number">
                                         <span class="@GetDayStyle(day)">@day.Date.Day</span>
@@ -178,56 +182,61 @@
         </tbody>
     </table>
 </div>
-<hr />
-<div>
-    <div class="float-end">
-        <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <InputText @bind-Value="Model.FilterText" class="form-control" placeholder="Filter..." @oninput="OnFilterTextChanged"></InputText>
-        </div>
-    </div>
-    <h2>Event Categories</h2>
-</div>
-<div class="table-responsive">
-    <table class="table table-striped table-sm">
-        <thead>
-            <tr>
-                <th>Category</th>
-                <th>Last Scheduled Event</th>
-                <th>Event Type</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var category in Model.FilteredCategories)
-            {
-                <tr @key="@CleanName("Row", category.Name)">
-                    <td>@category.Name</td>
-                    <td>@category.LastEvent</td>
-                    <td>
-                        <InputRadioGroup Name="@CleanName("CategoryEventType", category.Name)"
-                                         Value="category.EventType"
-                                         ValueChanged="async (CalendarEventType newValue) => await OnEventTypeChanged(category, newValue)"
-                                         ValueExpression="@(() => category.EventType)">
+<AuthorizeView Roles="Admin">
+    <Authorized>
 
-                            <div class="form-check d-inline-block mx-3">
-                                <label class="form-check-label">
-                                    <InputRadio class="form-check-input" Value="CalendarEventType.Other" /> Other
-                                </label>
-                            </div>
-                            <div class="form-check d-inline-block mx-3">
-                                <label class="form-check-label">
-                                    <InputRadio class="form-check-input" Value="CalendarEventType.PistolMatch" /> Pistol Match
-                                </label>
-                            </div>
-                            <div class="form-check d-inline-block mx-3">
-                                <label class="form-check-label">
-                                    <InputRadio class="form-check-input" Value="CalendarEventType.RangeClosed" /> Range Closed
-                                </label>
-                            </div>
-                        </InputRadioGroup>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+        <hr />
+        <div>
+            <div class="float-end">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <InputText @bind-Value="Model.FilterText" class="form-control" placeholder="Filter..." @oninput="OnFilterTextChanged"></InputText>
+                </div>
+            </div>
+            <h2>Event Categories</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-sm">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Last Scheduled Event</th>
+                        <th>Event Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var category in Model.FilteredCategories)
+                    {
+                        <tr @key="@CleanName("Row", category.Name)">
+                            <td>@category.Name</td>
+                            <td>@category.LastEvent</td>
+                            <td>
+                                <InputRadioGroup Name="@CleanName("CategoryEventType", category.Name)"
+                                                 Value="category.EventType"
+                                                 ValueChanged="async (CalendarEventType newValue) => await OnEventTypeChanged(category, newValue)"
+                                                 ValueExpression="@(() => category.EventType)">
+
+                                    <div class="form-check d-inline-block mx-3">
+                                        <label class="form-check-label">
+                                            <InputRadio class="form-check-input" Value="CalendarEventType.Other" /> Other
+                                        </label>
+                                    </div>
+                                    <div class="form-check d-inline-block mx-3">
+                                        <label class="form-check-label">
+                                            <InputRadio class="form-check-input" Value="CalendarEventType.PistolMatch" /> Pistol Match
+                                        </label>
+                                    </div>
+                                    <div class="form-check d-inline-block mx-3">
+                                        <label class="form-check-label">
+                                            <InputRadio class="form-check-input" Value="CalendarEventType.RangeClosed" /> Range Closed
+                                        </label>
+                                    </div>
+                                </InputRadioGroup>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Authorized>
+</AuthorizeView>

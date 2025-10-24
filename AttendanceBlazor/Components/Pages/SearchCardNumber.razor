@@ -1,0 +1,20 @@
+﻿@page "/cardnumber/{CardNumber}"
+
+@code {
+    [Parameter]
+    public string CardNumber { get; set; } = string.Empty;
+
+    string ReturnUrl => $"/cardnumber/{CardNumber}";
+}
+
+<PageTitle>Card Usage | RRGC Attendance</PageTitle>
+
+<AuthorizeView Roles="Admin">
+    <NotAuthorized>
+        <LoginComponent ReturnUrl="@ReturnUrl" />
+    </NotAuthorized>
+    <Authorized>
+        <CardNumberComponent CardNumber="@CardNumber" />
+    </Authorized>
+</AuthorizeView>
+
