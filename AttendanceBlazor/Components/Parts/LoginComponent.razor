@@ -1,6 +1,8 @@
 ﻿@using System.Diagnostics
 @rendermode InteractiveServer
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IUserManager UserManager
 
 @code {
 
@@ -9,12 +11,16 @@
     [Parameter] public string CardNumber { get; set; } = string.Empty;
     [Parameter] public string AuthCode { get; set; } = string.Empty;
 
+    public InputText? txtAC1{ get; set; }
 
-    int AuthMode { get; set; }
-    int AuthMethod { get; set; }
-
+    int AuthMode;
+    int AuthMethod;
+    bool CanCodeBeSent = true;
+    bool HasCodeBeenSent;
     bool UsePNZNumber => AuthMode == 0;
     bool UseCardNumber => AuthMode == 1;
+    string? PNZNumberError = null;
+    string? CardNumberError = null;
 
     string? CardNumberDisabled => UseCardNumber ? null : "disabled";
 
@@ -43,17 +49,35 @@
         return $"{CC1}{CC2}{CC3}{CC4}:{CC5}{CC6}{CC7}{CC8}{CC9}".Trim().ToUpperInvariant();
     }
 
+    bool IsValidCardNumber()
+    {
+        return GetCardNumber().Replace(":", "").Length == 9;
+    }
+
+    bool IsValidPNZNumber()
+    {
+        return !String.IsNullOrWhiteSpace(PNZNumber) && PNZNumber.Length >= 4;
+    }
+
     string GetAuthCode()
     {
         return $"{AC1}{AC2}{AC3}{AC4}{AC5}{AC6}{AC7}{AC8}".Trim().ToUpperInvariant();
     }
 
+    bool IsValidAccessCode()
+    {
+        return Int64.TryParse(GetAuthCode(), out long code) && code >= 10000000 && code <= 99999999;
+    }
+
     protected override void OnParametersSet()
     {
-        if(!String.IsNullOrWhiteSpace(PNZNumber))
-         {
-             AuthMode = 0;
-         }
+        CanCodeBeSent = true;
+        HasCodeBeenSent = false;
+
+        if (!String.IsNullOrWhiteSpace(PNZNumber))
+        {
+            AuthMode = 0;
+        }
 
         // Example: card=02E0:00001 -> split across CC1..CC9
         if (!String.IsNullOrWhiteSpace(CardNumber))
@@ -73,9 +97,39 @@
         }
     }
 
-    void SendAuthenticationCode()
+    async Task SendAuthenticationCode()
     {
+        PNZNumberError = null;
+        CardNumberError = null;
+
+        if(UsePNZNumber && !IsValidPNZNumber())
+        {
+            PNZNumberError = "PNZ Number should be at least 4 characters in length";
+            return;
+        }
+
+        if(UseCardNumber && !IsValidCardNumber())
+        {
+            CardNumberError = "Card Number requires all 9 characters";
+            return;
+        }
+
+
+        if (UsePNZNumber)
+            await UserManager.SendAccessCodeForPnzNumber(PNZNumber);
+        if(UseCardNumber)
+            await UserManager.SendAccessCodeForCardNumber(GetCardNumber());
+
+        HasCodeBeenSent = true;
+        CanCodeBeSent = false;
+
+        _ = Task.Delay(TimeSpan.FromSeconds(30)).ContinueWith(t => {
+            CanCodeBeSent = true;
+            InvokeAsync(StateHasChanged);
+        });
         StateHasChanged();
+        if(txtAC1?.Element is not null)
+            await txtAC1.Element.Value.FocusAsync();
     }
 }
 
@@ -103,6 +157,12 @@
                     <InputText class="authentication-login" @bind-Value="PNZNumber" disabled="@(!UsePNZNumber)" maxlength="10"></InputText>
                 </div>
             </div>
+            @if(UsePNZNumber && !String.IsNullOrEmpty(PNZNumberError))
+            {
+                <div class="text-danger">
+                    PNZ Number must contain a value
+                </div>
+            }
             <div class="mt-2">
                 <div class="form-check">
                     <label class="form-check-label">
@@ -110,7 +170,7 @@
                     </label>
                 </div>
                 <div class="mx-4">
-                    <InputText @bind-Value="CC1" id="cc1" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeyup="authCodeKeyUp(this, 'cc2', event)" />
+                    <InputText @bind-Value="CC1" id="cc1" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, null, event)" onkeyup="authCodeKeyUp(this, 'cc2', event)" />
                     <InputText @bind-Value="CC2" id="cc2" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc1', event)" onkeyup="authCodeKeyUp(this, 'cc3', event)" />
                     <InputText @bind-Value="CC3" id="cc3" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc2', event)" onkeyup="authCodeKeyUp(this, 'cc4', event)" />
                     <InputText @bind-Value="CC4" id="cc4" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc3', event)" onkeyup="authCodeKeyUp(this, 'cc5', event)" />
@@ -122,6 +182,12 @@
                     <InputText @bind-Value="CC9" id="cc9" disabled="@CardNumberDisabled" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'cc8', event)" onkeyup="authCodeKeyUp(this, null, event)" />
                 </div>
             </div>
+            @if(UseCardNumber && !String.IsNullOrEmpty(CardNumberError))
+            {
+                <div class="text-danger">
+                    Card Number must contain all 9 digits
+                </div>
+            }
         </InputRadioGroup>
     </div>
 </div>
@@ -145,7 +211,15 @@
 </div>
 <div class="row mt-3">
     <div class="col-12">
-        <button class="btn btn-primary" @onclick="SendAuthenticationCode">Send Code</button>
+        @if (CanCodeBeSent)
+        {
+            <button class="btn btn-primary" @onclick="SendAuthenticationCode">Send Code</button>
+        }
+        else
+        {
+            <button class="btn btn-primary" disabled="disabled" @onclick="SendAuthenticationCode">Send Code</button>
+            <label>Wait 30 seconds before requesting another code</label>
+        }
     </div>
 </div>
 <hr class="my-4" />
@@ -153,7 +227,7 @@
     <div class="col-12">
         <label class="form-label fw-bold">Enter the Authentication Code</label>
         <div>
-            <InputText @bind-Value="AC1" id="ac1" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeyup="authCodeKeyUp(this, 'ac2', event)" />
+            <InputText @bind-Value="AC1" @ref="txtAC1" id="ac1" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, null, event)" onkeyup="authCodeKeyUp(this, 'ac2', event)" />
             <InputText @bind-Value="AC2" id="ac2" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac1', event)" onkeyup="authCodeKeyUp(this, 'ac3', event)" />
             <span>&nbsp;</span>
             <InputText @bind-Value="AC3" id="ac3" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac2', event)" onkeyup="authCodeKeyUp(this, 'ac4', event)" />
@@ -171,7 +245,7 @@
     <div class="row mt-2">
         <div class="col-12">
             <div class="form-check">
-                <label class="form-check-label"><input type="checkbox" class="form-check-input" name="RememberMe" value="true" /> Remember me on this device</label>
+                <label class="form-check-label"><input type="checkbox" class="form-check-input" name="RememberMe" value="true" /> Trust this device</label>
             </div>
         </div>
     </div>
@@ -182,7 +256,14 @@
             <input type="hidden" name="AuthCode" value="@GetAuthCode()" />
             <input type="hidden" name="Nonce" value="@Guid.NewGuid()" />
             <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
-            <button class="btn btn-primary" type="submit">Authenticate</button>
+            @if (IsValidAccessCode())
+            {
+                <button class="btn btn-primary" type="submit">Authenticate</button>
+            }
+            else
+            {
+                <button class="btn btn-primary" disabled="disabled" type="submit">Authenticate</button>
+            }
         </div>
     </div>
 </form>

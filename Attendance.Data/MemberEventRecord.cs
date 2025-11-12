@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Attendance.Data;
 
-public class MemberRecord
+public class MemberEventRecord
 {
     public DateTime? EventTime { get; set; }
 

@@ -8,8 +8,8 @@ namespace Attendance.Services;
 
 public interface IAttendanceManager
 {
-	Task<MemberRecord[]> GetMembers();
-	Task<MemberRecord[]> GetRangeActivity(DateTime startDate, DateTime endDate);
+	Task<MemberEventRecord[]> GetMembers();
+	Task<MemberEventRecord[]> GetRangeActivity(DateTime startDate, DateTime endDate);
 
     Task<AttendanceSummaryRecord[]> GetAttendanceSummariesAsync(DateTime startDate, DateTime endDate);
 	Task<AttendanceRecord[]> GetEntryExitsAsync(DateTime startDate, DateTime endDate, params string[] cardNumbers);
@@ -155,10 +155,10 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 		_keys.Clear();
     }
 
-	public async Task<MemberRecord[]> GetMembers()
+	public async Task<MemberEventRecord[]> GetMembers()
 	{
         string key = $"Members_ALL";
-        if (_cache.TryGetValue<MemberRecord[]>(key, out var cached) && cached != null)
+        if (_cache.TryGetValue<MemberEventRecord[]>(key, out var cached) && cached != null)
             return cached;
 
 		var parameters = new Dictionary<string, object?>();
@@ -166,9 +166,9 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var result = context.QueryAsync<MemberRecord>(sql, parameters);
+        var result = context.QueryAsync<MemberEventRecord>(sql, parameters);
 
-		var results = new List<MemberRecord>();
+		var results = new List<MemberEventRecord>();
         await foreach (var item in result)
             results.Add(item);
 
@@ -178,7 +178,7 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
         return results.ToArray();
     }
 
-    public async Task<MemberRecord[]> GetRangeActivity(DateTime startDate, DateTime endDate)
+    public async Task<MemberEventRecord[]> GetRangeActivity(DateTime startDate, DateTime endDate)
     {
         var parameters = new Dictionary<string, object?>
         {
@@ -188,18 +188,18 @@ WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.Ran
 
         string key = $"RangeActivity_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
 
-        if (_cache.TryGetValue<MemberRecord[]>(key, out var cached) && cached != null)
+        if (_cache.TryGetValue<MemberEventRecord[]>(key, out var cached) && cached != null)
             return cached;
 
         // Since we need to use string concatenation to build the IN clause, we need to ensure
         // that all values are SQL parameters.
         var sql = ActivityQuery;
 
-        var results = new List<MemberRecord>();
+        var results = new List<MemberEventRecord>();
 
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var result = context.QueryAsync<MemberRecord>(sql, parameters);
+        var result = context.QueryAsync<MemberEventRecord>(sql, parameters);
         await foreach (var item in result)
             results.Add(item);
 

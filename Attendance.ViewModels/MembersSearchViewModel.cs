@@ -7,7 +7,7 @@ namespace Attendance.ViewModels;
 
 public class MembersSearchViewModel
 {
-    public List<MemberRecord> AllMembers { get; } = new();
+    public List<MemberEventRecord> AllMembers { get; } = new();
 
     public string FilterText { get; set; } = string.Empty;
 
@@ -17,13 +17,13 @@ public class MembersSearchViewModel
     /// <remarks>The returned collection includes only those members whose combined identifying fields contain
     /// the filter text, using a case-insensitive comparison. Filtering is applied only when the filter text is at least
     /// three characters long; otherwise, the collection is empty.</remarks>
-    public IEnumerable<MemberRecord> FilteredMembers
+    public IEnumerable<MemberEventRecord> FilteredMembers
     {
         get
         {
             if (FilterText.Length >= 3)
             {
-                foreach (MemberRecord member in AllMembers)
+                foreach (MemberEventRecord member in AllMembers)
                 {
                     string text = $"{member.PersonId}|{member.SportyCardNumber}|{member.FirstName}|{member.LastName}|{member.FALNumber}|{member.PNZNumber}|{member.MobileNumber}|{member.EmailAddress}|{member.EntraPersonId}|{member.EntraCardNumber}|{member.EntraCardUserName}";
                     if (String.IsNullOrWhiteSpace(FilterText) || text.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
@@ -35,7 +35,7 @@ public class MembersSearchViewModel
         }
     }
 
-    public MembersSearchViewModel(MemberRecord[]? members = null)
+    public MembersSearchViewModel(MemberEventRecord[]? members = null)
     {
         if (members != null)
         {

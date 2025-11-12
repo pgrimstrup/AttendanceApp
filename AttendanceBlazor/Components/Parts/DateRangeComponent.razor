@@ -14,8 +14,8 @@
     bool OrderDescending { get; set; }
     string FilterText { get; set; } = "";
 
-    List<MemberRecord> Activity = new();
-    IEnumerable<MemberRecord> FilteredActivity
+    List<MemberEventRecord> Activity = new();
+    IEnumerable<MemberEventRecord> FilteredActivity
     {
         get
         {
@@ -39,7 +39,7 @@
         Activity = await LoadModelData();
     }
 
-    private async Task<List<MemberRecord>> LoadModelData()
+    private async Task<List<MemberEventRecord>> LoadModelData()
     {
         DateTime endDate = new DateTime(DateTime.Today.Year + 1, 7, 1);
         DateTime startDate = new DateTime(DateTime.Today.Year, 7, 1);

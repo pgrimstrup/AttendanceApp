@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Ical.Net" Version="5.1.1" />
+    <PackageReference Include="Smtp2Go.ApiClient" Version="0.0.5" />
   </ItemGroup>
 
   <ItemGroup>

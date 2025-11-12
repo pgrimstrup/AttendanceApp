@@ -1,8 +1,8 @@
 ﻿@code {
     [Parameter]
-    public List<MemberRecord> Activity { get; set; } = new();
+    public List<MemberEventRecord> Activity { get; set; } = new();
 
-    string GenerateKey(MemberRecord record)
+    string GenerateKey(MemberEventRecord record)
     {
         return $"{record.EntraCardNumber}_{record.EventTime:yyyy-MM-ddTHH:mm:ss}";
     }

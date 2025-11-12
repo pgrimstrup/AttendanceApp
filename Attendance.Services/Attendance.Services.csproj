@@ -9,7 +9,8 @@
   <ItemGroup>
     <PackageReference Include="CSVFile" Version="3.2.1" />
     <PackageReference Include="Ical.Net" Version="5.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0-rc.1.25451.107" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Smtp2Go.ApiClient" Version="0.0.5" />
   </ItemGroup>
 
   <ItemGroup>
