@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Mail;
 using System.Reflection.Metadata;
 using System.Text;
 using Microsoft.Extensions.Options;
-using Smtp2Go.Api;
-using Smtp2Go.Api.Models.Emails;
 
 namespace Attendance.Services;
 
@@ -13,43 +12,52 @@ public interface IEmailManager
     Task SendAccessCodeAsync(string toEmail, string accessCode);
 }
 
-public class EmailManagerOptions
+public interface IEmailQueueService
 {
-    public const string SectionName = "EmailService";
-
-    public string? ApiKey { get; set; }
-    public string? TemplateId { get; set; }
-    public string? SenderEmail { get; set; }
-    public string? SenderName {  get; set; }
+    void QueueEmailAsync(SmtpSettings smtp, MailMessage message);
 }
+
 
 public class EmailManager : IEmailManager
 {
     EmailManagerOptions _options;
-    Smtp2GoApiService _service;
+    IEmailQueueService _queue;
 
-    public EmailManager(IOptions<EmailManagerOptions> options)
+    public EmailManager(IOptions<EmailManagerOptions> options, IEmailQueueService queue)
     {
         _options = options.Value;
-
-        ArgumentNullException.ThrowIfNull(_options.ApiKey, nameof(_options.ApiKey));
-        ArgumentNullException.ThrowIfNull(_options.SenderEmail, nameof(_options.SenderEmail));
-
-        _service = new Smtp2GoApiService(_options.ApiKey);
+        _queue = queue;
     }
 
     public async Task SendAccessCodeAsync(string toEmail, string accessCode)
     {
-        if(String.IsNullOrEmpty(accessCode) || accessCode.Length != 8)
+        ArgumentException.ThrowIfNullOrEmpty(_options.Smtp.Server, "Smtp.Server");
+        ArgumentException.ThrowIfNullOrEmpty(_options.Smtp.Username, "Smtp.Username");
+        ArgumentException.ThrowIfNullOrEmpty(_options.Smtp.Password, "Smtp.Password");
+        ArgumentException.ThrowIfNullOrEmpty(_options.ReplyToEmail, nameof(_options.ReplyToEmail));
+        ArgumentException.ThrowIfNullOrEmpty(_options.ReplyToName, nameof(_options.ReplyToName));
+        ArgumentException.ThrowIfNullOrEmpty(_options.TemplateId, nameof(_options.TemplateId));
+
+        if (String.IsNullOrEmpty(accessCode) || accessCode.Length != 8)
             throw new ArgumentException("Access code must be 8 characters", nameof(accessCode));
 
-        var message = new TemplatedEmailMessage(_options.TemplateId, _options.SenderEmail, toEmail);
+        var code = $"{accessCode.Substring(0, 2)} {accessCode.Substring(2, 2)} {accessCode.Substring(4, 2)} {accessCode.Substring(6, 2)}";
 
-        var code = $"{accessCode.Substring(0,2)} {accessCode.Substring(2,2)} {accessCode.Substring(4,2)} {accessCode.Substring(6,2)}";
-        message.AddTemplateVariable("access_code", code);
-        message.AddCustomHeader("Reply-To", $"{_options.SenderName} <{_options.SenderEmail}>");
+        Dictionary<string, string> data = new() {
+            { "REPLY_TO_EMAIL", _options.ReplyToEmail},
+            { "ACCESS_CODE", code }
+        };
 
-        var response = await _service.SendTemplatedEmail(message);
+        var template = new EmailTemplate(_options.TemplateId);
+        var message = await template.CreateMailMessage(data);
+        if (message != null)
+        {
+            message.Subject = "Your Access Code for RRGC";
+            message.From = new MailAddress(_options.Smtp.Username, "RRGC No Reply");
+            message.To.Add(new MailAddress(toEmail));
+            message.ReplyToList.Add(new MailAddress(_options.ReplyToEmail, _options.ReplyToName));
 
+            _queue.QueueEmailAsync(_options.Smtp, message);
+        }
     }
 }

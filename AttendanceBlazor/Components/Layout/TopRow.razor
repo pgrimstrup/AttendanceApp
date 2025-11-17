@@ -7,24 +7,64 @@
         var uri = new Uri(Navigation.Uri);
         Navigation.NavigateTo($"/account/login?returnUrl={Uri.EscapeDataString(uri.PathAndQuery)}", true);
     }
+
+    string GetMyMatchesUrl(AuthenticationState context)
+    {
+        return $"/pnznumber/{context.GetPnzNumber()}";
+    }
 }
 
-<CascadingAuthenticationState>
-    <AuthorizeView>
-        <Authorized>
-            <form method="post" action="/account/logout">
-            @if (context.User.IsInRole("Admin"))
-            {
-                <button type="submit" class="btn btn-warning" >Logout @context?.User?.Identity?.Name (Admin)</button>
-            }
-            else
-            {
-                <button type="submit" class="btn btn-outline-secondary" >Logout @context?.User?.Identity?.Name</button>
-            }
-            </form>
-        </Authorized>
-        <NotAuthorized>
-            <button class="btn btn-outline-secondary" @onclick="GoToLoginPage">Login</button>
-        </NotAuthorized>
-    </AuthorizeView>
-</CascadingAuthenticationState>
+<div>
+    <NavLink class="btn btn-primary mx-1" href="" Match="NavLinkMatch.All">
+        <span class="bi bi-nav-menu bi-list-check" aria-hidden="true"></span> Summary
+    </NavLink>
+    <NavLink class="btn btn-primary mx-1 " href="/calendar">
+        <span class="bi bi-nav-menu  bi-calendar3" aria-hidden="true"></span> Calendar
+    </NavLink>
+
+    <CascadingAuthenticationState>
+        <AuthorizeView Roles="PNZ">
+            <Authorized>
+                <NavLink class="btn btn-primary mx-1 " href="@GetMyMatchesUrl(context)">
+                    <span class="bi bi-nav-menu  bi-calendar3" aria-hidden="true"></span> My Matches
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
+    </CascadingAuthenticationState>
+</div>
+
+<div class="ms-auto">
+    <CascadingAuthenticationState>
+        <AuthorizeView>
+            <Authorized>
+                <form method="post" action="/account/logout">
+                    @if (context.IsInRole("Admin"))
+                    {
+                        <NavLink class="btn btn-warning mx-1" href="/members">
+                            <span class="bi bi-nav-menu bi-person-circle" aria-hidden="true"></span> Members
+                        </NavLink>
+                        <NavLink class="btn btn-warning mx-1" href="/daterange">
+                            <span class="bi bi-nav-menu bi-person-vcard" aria-hidden="true"></span> Dates
+                        </NavLink>
+                        <NavLink class="btn btn-warning mx-1" href="/UploadSporty">
+                            <span class="bi bi-nav-menu bi-person-up" aria-hidden="true"></span> Upload Sporty
+                        </NavLink>
+                        <NavLink class="btn btn-warning mx-1" href="/UploadEntraPass">
+                            <span class="bi bi-nav-menu bi-building-up" aria-hidden="true"></span> Upload EntraPass
+                        </NavLink>
+
+                        <button type="submit" class="btn btn-warning mx-1">Logout @context.GetName() (Admin)</button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="btn btn-outline-success mx-1">Logout @context.GetName()</button>
+                    }
+                </form>
+            </Authorized>
+            <NotAuthorized>
+                <button class="btn btn-success mx-1" @onclick="GoToLoginPage">Login</button>
+            </NotAuthorized>
+        </AuthorizeView>
+    </CascadingAuthenticationState>
+
+</div>

@@ -1,4 +1,5 @@
-﻿@rendermode InteractiveServer
+﻿@using System.Security.Claims
+@rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject IAttendanceManager AttendanceManager
 @inject IHttpContextAccessor Accessor
@@ -19,6 +20,23 @@
         ClearAwayEvent();
     }
 
+    private bool AllowAccessToPnzNumber(ClaimsPrincipal? user, string? pnzNumber)
+    {
+        if (user == null || String.IsNullOrWhiteSpace(pnzNumber))
+            return false;
+
+        if (user.IsInRole("Admin"))
+            return true;
+
+        if (!user.IsInRole("PNZ"))
+            return false;
+
+        if (user.Claims.FirstOrDefault(c => c.Type == "PNZ")?.Value == pnzNumber)
+            return true;
+
+        return false;
+    }
+
 
     private async Task<MemberHistoryViewModel> LoadModelData(int? year, string? pnzNumber)
     {
@@ -26,7 +44,7 @@
         model.PNZNumber = pnzNumber ?? string.Empty;
 
         var user = Accessor.HttpContext?.User;
-        if (user == null || (!user.IsInRole("PNZ:" + pnzNumber) && !user.IsInRole("Admin")))
+        if (!AllowAccessToPnzNumber(user, pnzNumber))
         {
             PermissionDenied = true;
         }
@@ -239,7 +257,7 @@ else
             <tr>
                 <th style="text-align:end">Number of match days attended:</th>
                 <th style="text-align:center">@Model.TotalMatchDays</th>
-                <th style="text-align:end" colspan="3">Number of events counted:</th>
+                <th style="text-align:end" colspan="3">Number of days counted:</th>
                 <th style="text-align:center">@Model.TotalEventsCounted</th>
             </tr>
         </tfoot>

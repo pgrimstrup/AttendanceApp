@@ -1,0 +1,19 @@
+﻿Rifle Rod & Gun Club (Manawatu) Inc
+===================================
+
+Your Access Code
+----------------
+
+Use this Access to access the RRGC website. 
+This code can only be used once and will expire in 30 minutes.
+You can always request another Access Code by logging into the RRGC website again.
+
+
+Access Code: {{ACCESS_CODE}}
+
+
+Not sure what this email is for?
+--------------------------------
+It’s sent to our members who wish to access the full match attendance records on the RRGC website. 
+If you did not attempt to access your attendance records online, then please disregard this email.
+For any questions or concerns, please contact the RRGC Club Secretary by email {{REPLY_TO_EMAIL}}

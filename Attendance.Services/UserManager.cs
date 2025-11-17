@@ -101,7 +101,7 @@ public class UserManager : IUserManager
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var found = await context.SportyImports.Where(i => i.PNZNumber == pnzNumber && i.AuthCode == accessCode && i.AuthCodeExpiry > DateTime.Now)
+        var found = await context.SportyImports.Where(i => i.PNZNumber == pnzNumber && i.AuthCode == accessCode && i.AuthCodeExpiry > DateTime.UtcNow)
             .ToListAsync();
 
         var member = found.FirstOrDefault();
@@ -120,7 +120,7 @@ public class UserManager : IUserManager
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var found = await context.SportyImports.Where(i => i.CardNumber == cardNumber && i.AuthCode == accessCode && i.AuthCodeExpiry > DateTime.Now)
+        var found = await context.SportyImports.Where(i => i.CardNumber == cardNumber && i.AuthCode == accessCode && i.AuthCodeExpiry > DateTime.UtcNow)
             .ToListAsync();
 
         var member = found.FirstOrDefault();

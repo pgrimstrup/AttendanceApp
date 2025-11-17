@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using Attendance.Data;
+using Attendance.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
@@ -13,10 +14,12 @@ namespace AttendanceBlazor.Controllers;
 public class AuthenticateController : ControllerBase
 {
     readonly AttendanceOptions _options;
+    readonly IUserManager _users;
 
-    public AuthenticateController(IOptions<AttendanceOptions> options)
+    public AuthenticateController(IOptions<AttendanceOptions> options, IUserManager userManager)
     {
         _options = options.Value;
+        _users = userManager;
     }
 
 
@@ -29,39 +32,68 @@ public class AuthenticateController : ControllerBase
         [FromForm(Name = "AuthCode")] string? authCode,
         [FromForm(Name = "RememberMe")] bool? rememberMe)
     {
-        // TODO: validate credentials. Simple demo user:
-        List<Claim> claims = new()
-        {
-            new Claim(ClaimTypes.Name, "Paul G"),
-            //new Claim(ClaimTypes.Role, "Admin"),
-            new Claim(ClaimTypes.Role, "Member"),
-        };
+        SportyImport? user = null;
 
-        if (!String.IsNullOrEmpty(pnzNumber))
+        if(!String.IsNullOrWhiteSpace(authCode))
         {
-            claims.Add(new Claim(ClaimTypes.Role, "PNZ"));
-            claims.Add(new Claim(ClaimTypes.Role, "PNZ:" + pnzNumber));
-        }
-        if (!String.IsNullOrEmpty(cardNumber))
-        { 
-            if(_options.Administrators.Contains(cardNumber))
+            if(Int32.TryParse(authCode.Replace(" ", ""), out var code))
             {
-                claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+                if (!String.IsNullOrWhiteSpace(pnzNumber) && !String.IsNullOrWhiteSpace(authCode))
+                {
+                    user  = await _users.ValidateAccessCodeForPnzNumber(pnzNumber, code);
+                }
+                if (!String.IsNullOrEmpty(cardNumber))
+                {
+                    user = await _users.ValidateAccessCodeForCardNumber(cardNumber, code);
+                }
             }
         }
 
-        var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        if (user != null)
+        {
+            List<Claim> claims = new()
+            {
+                new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName?.Substring(0,1)}"),
+                new Claim(ClaimTypes.Role, "Member"),
+                new Claim("RFID", user.CardNumber ?? ""),
+                new Claim(ClaimTypes.Email, user.EmailAddress ?? "")
+            };
 
-        var properties = new AuthenticationProperties {
-            IsPersistent = rememberMe == true,
-            ExpiresUtc = rememberMe == true ? DateTimeOffset.UtcNow.AddDays(30) : null
-        };
+            if (!String.IsNullOrEmpty(user.FALNumber))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, "FAL"));
+                claims.Add(new Claim("FAL", user.FALNumber));
+            }
 
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(id),
-            properties);
+            if (!String.IsNullOrEmpty(user.PNZNumber))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, "PNZ"));
+                claims.Add(new Claim("PNZ", user.PNZNumber));
+            }
 
-        return Redirect(String.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+            if (!String.IsNullOrEmpty(user.CardNumber))
+            {
+                if (_options.Administrators.Contains(user.CardNumber))
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+                }
+            }
+
+            var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+            var properties = new AuthenticationProperties {
+                IsPersistent = rememberMe == true,
+                ExpiresUtc = rememberMe == true ? DateTimeOffset.UtcNow.AddDays(30) : null
+            };
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(id),
+                properties);
+
+            return Redirect(String.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+        }
+
+        return BadRequest("Invalid Access Code");
     }
 }

@@ -141,7 +141,7 @@
     <div class="col-sm-12 col-lg-9">
         <p>
             You can login using your PNZ Number or your Gate Access Card number.
-            We will send the Authentication Code to the email address or phone number we have on file that is associated with the PNZ Number or Gate Access Card number.
+            We will send the Authentication Code to the email address we have on file that is associated with the PNZ Number or Gate Access Card number.
             This code will expire in 30 minutes. You can always request another code if you need to.
         </p>
 
@@ -192,40 +192,28 @@
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-12">
-        <label class="form-label fw-bold">Select Two-Factor Authentication Method</label>
-        <InputRadioGroup Name="AuthMethod" @bind-Value="AuthMethod">
-            <div class="form-check">
-                <label class="form-check-label">
-                    <InputRadio class="form-check-input" Value="0"></InputRadio> By Email
-                </label>
-            </div>
-            <div class="form-check">
-                <label class="form-check-label">
-                    <InputRadio class="form-check-input" Value="1"></InputRadio> By SMS
-                </label>
-            </div>
-        </InputRadioGroup>
-    </div>
-</div>
 <div class="row mt-3">
     <div class="col-12">
         @if (CanCodeBeSent)
         {
             <button class="btn btn-primary" @onclick="SendAuthenticationCode">Send Code</button>
+            <div>
+                <label class="text-primary">Click this button to send an email to the email address associated with the PNZ/Card number.</label>
+            </div>
         }
         else
         {
             <button class="btn btn-primary" disabled="disabled" @onclick="SendAuthenticationCode">Send Code</button>
-            <label>Wait 30 seconds before requesting another code</label>
+            <div>
+                <label class="text-info">Wait 30 seconds before requesting another code</label>
+            </div>
         }
     </div>
 </div>
 <hr class="my-4" />
 <div class="row5">
     <div class="col-12">
-        <label class="form-label fw-bold">Enter the Authentication Code</label>
+        <label class="form-label fw-bold">Enter the Access Code</label>
         <div>
             <InputText @bind-Value="AC1" @ref="txtAC1" id="ac1" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, null, event)" onkeyup="authCodeKeyUp(this, 'ac2', event)" />
             <InputText @bind-Value="AC2" id="ac2" name="AuthCode" type="text" class="authentication-code" maxlength="1" onkeydown="authCodeKeyDown(this, 'ac1', event)" onkeyup="authCodeKeyUp(this, 'ac3', event)" />

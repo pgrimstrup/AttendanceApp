@@ -1,12 +1,10 @@
 using System.Globalization;
-using System.Security.Claims;
 using Attendance.Data;
 using Attendance.Services;
 using AttendanceBlazor.Components;
 using AttendanceBlazor.HostedServices;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 #if DEBUG
@@ -18,7 +16,8 @@ Thread.CurrentThread.CurrentCulture = nz;
 Thread.CurrentThread.CurrentUICulture = nz;
 #endif
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication
+    .CreateBuilder(args);
 
 // Add authentication services
 builder.Services.AddAuthentication(options => {
@@ -54,6 +53,7 @@ builder.Services.AddSingleton<ICalendarManager, CalendarManager>();
 builder.Services.AddSingleton<IAttendanceManager, AttendanceManager>();
 builder.Services.AddSingleton<IEmailManager, EmailManager>();
 builder.Services.AddSingleton<IUserManager, UserManager>();
+builder.Services.AddSingleton<IEmailQueueService, EmailQueueService>(); 
 
 builder.Services.AddOptions<CalendarImporterOptions>()
     .Bind(builder.Configuration.GetSection(CalendarImporterOptions.SectionName))
@@ -66,6 +66,7 @@ builder.Services.AddOptions<EmailManagerOptions>()
     .ValidateDataAnnotations();
 
 builder.Services.AddHostedService<CalendarImportService>();
+builder.Services.AddHostedService(s => (EmailQueueService)s.GetRequiredService<IEmailQueueService>());
 
 var app = builder.Build();
 

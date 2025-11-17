@@ -7,10 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Templates\Html\RRGC_Access_Code.html" />
+    <None Remove="Templates\Text\RRGC_Access_Code.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Templates\Html\RRGC_Access_Code.html" />
+    <EmbeddedResource Include="Templates\Text\RRGC_Access_Code.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CSVFile" Version="3.2.1" />
     <PackageReference Include="Ical.Net" Version="5.1.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-    <PackageReference Include="Smtp2Go.ApiClient" Version="0.0.5" />
   </ItemGroup>
 
   <ItemGroup>
