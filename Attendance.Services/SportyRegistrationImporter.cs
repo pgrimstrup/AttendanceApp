@@ -49,6 +49,13 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
         int pnzNumberIndex = FindPNZNumber(csv);
         var sectionTag = FindSectionTag(csv);
 
+        var info = new ImportedFile {
+            FileType = "Sporty",
+            DateImported = DateTimeOffset.UtcNow,
+            FileContent = "CSV"
+        };
+        await _dbContext.ImportedFiles.AddAsync(info);
+
         foreach (var line in csv)
         {
             try
@@ -66,8 +73,8 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
                     FALNumber = falNumber,
                     PNZNumber = CleanPNZNumber(pnzNumber),
                     MobileNumber = CleanMobileNumber(line[mobilNumberIndex]),
-                    EmailAddress = line[emailIndex]?.Trim() ?? "",  
-                    Sections = sectionTag
+                    EmailAddress = line[emailIndex]?.Trim() ?? "",
+                    Sections = sectionTag,
                 };
 
                 var found = await _dbContext.SportyImports.FindAsync(data.PersonId);
@@ -87,11 +94,11 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
 
                     if (cardNumberIndex >= 0)
                         found.CardNumber = data.CardNumber;
-                    if(sectionTag != SectionTags.None)
+                    if (sectionTag != SectionTags.None)
                         found.Sections = data.Sections;
-                    if(falNumberIndex >= 0)
+                    if (falNumberIndex >= 0)
                         found.FALNumber = data.FALNumber;
-                    if(pnzNumberIndex >= 0)
+                    if (pnzNumberIndex >= 0)
                         found.PNZNumber = data.PNZNumber;
                 }
             }
@@ -102,7 +109,7 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
         }
 
         await _dbContext.SaveChangesAsync();
-        _attendanceManager.FlushCache();    
+        _attendanceManager.FlushCache();
         return true;
     }
 
@@ -144,21 +151,21 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
         if (cardNumber.StartsWith("\""))
             cardNumber = cardNumber.Trim('"');
 
+        if (cardNumber.StartsWith("AXSF", StringComparison.OrdinalIgnoreCase))
+            cardNumber = cardNumber.Replace("AXSF", "", StringComparison.OrdinalIgnoreCase).Trim();
         if (cardNumber.StartsWith("XSF", StringComparison.OrdinalIgnoreCase))
             cardNumber = cardNumber.Replace("XSF", "", StringComparison.OrdinalIgnoreCase).Trim();
         if (cardNumber.StartsWith("MSF", StringComparison.OrdinalIgnoreCase))
             cardNumber = cardNumber.Replace("MSF", "", StringComparison.OrdinalIgnoreCase).Trim();
         if (cardNumber.StartsWith("XCF", StringComparison.OrdinalIgnoreCase))
             cardNumber = cardNumber.Replace("XCF", "", StringComparison.OrdinalIgnoreCase).Trim();
+        if (cardNumber.StartsWith("XCF", StringComparison.OrdinalIgnoreCase))
+            cardNumber = cardNumber.Replace("XCF", "", StringComparison.OrdinalIgnoreCase).Trim();
 
-        if (cardNumber.StartsWith("O2", StringComparison.OrdinalIgnoreCase) )
-            cardNumber = cardNumber.Replace("O2", "02", StringComparison.OrdinalIgnoreCase);
+        cardNumber = cardNumber.Replace('o', '0').Replace('O', '0');
 
-        if (cardNumber.StartsWith("02", StringComparison.OrdinalIgnoreCase) && cardNumber.Contains("O"))
-            cardNumber = cardNumber.Replace("O", "0", StringComparison.OrdinalIgnoreCase);
-
-        if (cardNumber.StartsWith("02") && cardNumber.Contains(" "))
-            cardNumber = cardNumber.Replace(" ", "");
+        char[] allowedChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', ':'];
+        cardNumber = new string(cardNumber.Where(c => allowedChars.Contains(c)).ToArray());
 
         if (cardNumber.StartsWith("02") && !cardNumber.Contains(":") && cardNumber.Length == 9)
             cardNumber = cardNumber.Substring(0, 4) + ":" + cardNumber.Substring(4);
@@ -188,6 +195,18 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
         for (int i = 0; i < csv.Headers.Length; i++)
         {
             if (csv.Headers[i].Contains("Gate entry card number", StringComparison.OrdinalIgnoreCase))
+                return i;
+            if (csv.Headers[i].Contains("Gate Access Card number", StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+        return -1;
+    }
+
+    int FindPrimarySectionColumn(CSVReader csv)
+    {
+        for (int i = 0; i < csv.Headers.Length; i++)
+        {
+            if (csv.Headers[i].Contains("Select your PRIMARY membership section", StringComparison.OrdinalIgnoreCase))
                 return i;
         }
         return -1;
@@ -221,6 +240,7 @@ public class SportyRegistrationImporter : ISportyRegistrationImporter
                 return SectionTags.SmallboreRifle;
             if (csv.Headers[i].Contains("This form is for members whose PRIMARY section is Sporting Rifle", StringComparison.OrdinalIgnoreCase))
                 return SectionTags.SportingRifle;
+
         }
         return SectionTags.None;
     }

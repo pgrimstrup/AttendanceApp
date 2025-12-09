@@ -21,15 +21,12 @@ public class MembersSearchViewModel
     {
         get
         {
-            if (FilterText.Length >= 3)
+            foreach (MemberEventRecord member in AllMembers)
             {
-                foreach (MemberEventRecord member in AllMembers)
+                string text = $"{member.PersonId}|{member.SportyCardNumber}|{member.FirstName}|{member.LastName}|{member.FALNumber}|{member.PNZNumber}|{member.MobileNumber}|{member.EmailAddress}|{member.EntraPersonId}|{member.EntraCardNumber}|{member.EntraCardUserName}";
+                if (String.IsNullOrWhiteSpace(FilterText) || text.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
                 {
-                    string text = $"{member.PersonId}|{member.SportyCardNumber}|{member.FirstName}|{member.LastName}|{member.FALNumber}|{member.PNZNumber}|{member.MobileNumber}|{member.EmailAddress}|{member.EntraPersonId}|{member.EntraCardNumber}|{member.EntraCardUserName}";
-                    if (String.IsNullOrWhiteSpace(FilterText) || text.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
-                    {
-                        yield return member;
-                    }
+                    yield return member;
                 }
             }
         }

@@ -30,7 +30,14 @@
                     {
                         <div><b>EntraPass:</b> <NavLink href="@($"/cardnumber/{record.EntraCardNumber}")">@record.EntraCardNumber</NavLink></div>
                         <div><b>CRM:</b> @record.SportyCardNumber</div>
-                        <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Update CRM with correct Card Number</div>
+                        @if (record.PriorCardNumbers != null && !String.IsNullOrWhiteSpace(record.EntraCardNumber) && record.PriorCardNumbers.Contains(record.EntraCardNumber))
+                        {
+                            <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Lost or stolen card used</div>
+                        }
+                        else
+                        {
+                            <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Update CRM with correct Card Number</div>
+                        }
                     }
                     else
                     {
@@ -47,7 +54,14 @@
                     {
                         <div><b>EntraPass:</b> @record.EntraCardUserName</div>
                         <div><b>CRM:</b> @record.PersonId</div>
-                        <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Update EntraPass with correct Person ID</div>
+                        @if(record.PriorCardNumbers != null && !String.IsNullOrWhiteSpace(record.EntraCardNumber) && record.PriorCardNumbers.Contains(record.EntraCardNumber))
+                        {
+                            <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Lost or stolen card used</div>
+                        }
+                        else
+                        {
+                            <div class="text-danger-emphasis"><i class="bi bi-exclamation-diamond-fill" /> Update EntraPass with correct Person ID</div>
+                        }
                     }
                     else
                     {

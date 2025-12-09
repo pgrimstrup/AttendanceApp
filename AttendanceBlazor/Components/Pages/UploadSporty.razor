@@ -63,12 +63,7 @@
             await stream.CopyToAsync(mem);
             mem.Position = 0;
 
-            if (CreateTestData)
-            {
-                var data = await Importer.CreateTestData(mem);
-                await JS.InvokeVoidAsync("downloadFile", "Sporty Import (Sample Data).csv", "text/csv", data);
-            }
-            else if (await Importer.Import(mem))
+            if (await Importer.Import(mem))
             {
                 AlertType = "alert-success";
                 UploadMessage = $"File '{file.Name}' uploaded and processed successfully.";

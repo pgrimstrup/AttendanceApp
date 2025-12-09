@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public virtual DbSet<OverrideEvent> OverrideEvents { get; set; } = null!;
     public virtual DbSet<SportyImport> SportyImports { get; set; } = null!;
     public virtual DbSet<EntraPassImport> EntraPassImports { get; set; } = null!;
+    public virtual DbSet<ImportedFile> ImportedFiles { get; set; } = null!;
 
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -115,18 +116,6 @@ public class AppDbContext : DbContext
             e.Property(e => e.CardInfo2).HasMaxLength(100);
         });
 
-        //builder.Entity<SpecialEvent>(e => {
-        //    e.ToTable("SpecialEvent");
-        //    e.HasKey(e => e.Id);
-        //    e.Property(e => e.Description).HasMaxLength(200);
-        //});
-
-        //builder.Entity<RecurringEvent>(e => {
-        //    e.ToTable("RecurringEvent");
-        //    e.HasKey(e => e.Id);
-        //    e.Property(e => e.Description).HasMaxLength(200);
-        //});
-
         builder.Entity<AwayEvent>(e => {
             e.ToTable("AwayEvent");
             e.HasKey(e => new { e.PersonId, e.StartDate });
@@ -139,5 +128,12 @@ public class AppDbContext : DbContext
             e.ToTable("OverrideEvent");
             e.HasKey(e => new { e.PersonId, e.EventDate });
         }); 
+
+        builder.Entity<ImportedFile>(e => {
+            e.ToTable("ImportedFile");
+            e.HasKey(e => e.Id);
+            e.Property(e => e.Id).ValueGeneratedOnAdd();
+            e.Property(e => e.FileType).HasMaxLength(50);
+        });
     }
 }

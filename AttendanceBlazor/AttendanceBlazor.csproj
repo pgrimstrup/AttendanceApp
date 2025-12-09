@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ical.Net" Version="5.1.1" />
+    <PackageReference Include="Ical.Net" Version="5.1.2" />
   </ItemGroup>
 
   <ItemGroup>

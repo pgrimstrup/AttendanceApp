@@ -10,6 +10,7 @@ public class MemberEventRecord
 
     public int? PersonId { get; set; }
     public string? SportyCardNumber { get; set; }
+    public string? PriorCardNumbers { get; set; }
     public DateTime? RegistrationDate { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }

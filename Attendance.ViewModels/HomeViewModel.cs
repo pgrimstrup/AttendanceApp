@@ -4,19 +4,24 @@ namespace Attendance.ViewModels;
 
 public class HomeViewModel
 {
-    DateTime _startTime;
-    DateTime _endTime;
-    DateTime _lastUpdated;
 
     public int Year { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public int MatchDaysDone { get; set; }
+    public int MatchDaysRemaining { get; set; }
+    public int WarningThreshold { get; set; }
+    public int RequiredCount { get; set; }
+
 
     public HomeViewModel(int? year)
     {
         Year = year ?? (DateTime.Today.Month >= 7 ? DateTime.Today.Year : (DateTime.Today.Year - 1));
-        _startTime = new DateTime(Year, 7, 1);
-        _endTime = new DateTime(Year + 1, 7, 1);
+        StartDate = new DateTime(Year, 7, 1);
+        EndDate = new DateTime(Year + 1, 7, 1);
 
-        _lastUpdated = DateTime.Now;
+        LastUpdated = DateTime.Now;
+        RequiredCount = 12;
+        WarningThreshold = 3;
 
         IPSC = new();
         ISSF = new();
@@ -26,11 +31,10 @@ public class HomeViewModel
 
     public string YearTitle => $"{Year}/{Year+1}";
 
-    public DateTime StartDate => _startTime;
+    public DateTime StartDate { get; }
 
-    public DateTime EndDate => _endTime;
+    public DateTime EndDate { get; }
 
-    public DateTime LastUpdated => _lastUpdated;
 
     public List<AttendanceSummaryRecord> IPSC { get; }
     public List<AttendanceSummaryRecord> ISSF { get; }

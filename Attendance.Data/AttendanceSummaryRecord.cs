@@ -6,7 +6,6 @@ public class AttendanceSummaryRecord
     public SectionTags Sections { get;set; }
     public int Count { get;set; }
 
-
     public int SortCode
     {
         get

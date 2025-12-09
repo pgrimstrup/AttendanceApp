@@ -1,10 +1,11 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @inject IAttendanceManager AttendanceManager
+@inject ICalendarManager CalendarManager
+@inject IEntraPassImporter EntraPassImporter
 
 @code {
 
-    bool _disposed;
     public HomeViewModel Model { get; set; } = new(null);
 
     protected override async Task OnInitializedAsync()
@@ -16,13 +17,22 @@
 
     public void Dispose()
     {
-        _disposed = true;
     }
 
 
     private async Task<HomeViewModel> LoadModelData(int? year)
     {
         var model = new HomeViewModel(year);
+
+        model.LastUpdated = await EntraPassImporter.GetLastImportDateTimeAsync();
+        // Convert months 7 to 6 to a number in the range 0 to 11.
+        model.WarningThreshold = ((model.LastUpdated.Month + 5) % 12) / 2;
+        model.RequiredCount = 12;
+
+        var days = await CalendarManager.GetCalendarDays(model.LastUpdated);
+        var when = DateOnly.FromDateTime(model.LastUpdated);
+        model.MatchDaysDone = days.Count(days => days.Date <= when && ((days.IsPistolDay && !days.IsClosedOverride && !days.IsClosedDay) || days.IsOpenOverride));
+        model.MatchDaysRemaining = days.Count(days => days.Date > when && ((days.IsPistolDay && !days.IsClosedOverride && !days.IsClosedDay) || days.IsOpenOverride));
 
         var summaries = AttendanceManager.GetAttendanceSummariesAsync(Model.StartDate, Model.EndDate);
         foreach (var summary in await summaries)
@@ -52,6 +62,41 @@
         return model;
     }
 
+    private string GetStatusClass(AttendanceSummaryRecord item)
+    {
+        if (item.Count < Model.WarningThreshold)
+        {
+            if (Model.MatchDaysRemaining <= (Model.RequiredCount - item.Count) * 2)
+            return "bi bi-exclamation-triangle-fill pnz-risk";
+
+            if (Model.MatchDaysRemaining <= (Model.RequiredCount - item.Count) * 4)
+                return "bi bi-exclamation-triangle pnz-risk";
+
+            return "bi bi-exclamation-triangle pnz-warning";
+        }
+
+        if (item.Count >= Model.RequiredCount)
+            return "bi bi-check2-square pnz-complete";
+
+        return "";
+    }
+
+    private string GetStatusHint(AttendanceSummaryRecord item)
+    {
+        if (item.Count < Model.WarningThreshold)
+        {
+            if (Model.MatchDaysRemaining <= (Model.RequiredCount - item.Count) * 2)
+                return "You are at extreme risk of failing to meet your B Endorsement obligations";
+
+            if (Model.MatchDaysRemaining <= (Model.RequiredCount - item.Count) * 4)
+                return "You are at risk of failing to meet your B Endorsement obligations";
+
+            return "You will need to catch up to meet your B Endorsement obligations";
+        }
+        if (item.Count >= Model.RequiredCount)
+            return "You have met your B Endorsement obligations for the year";
+        return "";
+    }
 }
 
 <PageTitle>RRGC Attendance</PageTitle>
@@ -59,26 +104,27 @@
 
 <div>
     <h2 style="text-align:center">Current @Model.YearTitle shoot counts, by PNZ number, by Section</h2>
-    <h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.EndDate.ToString("d MMMM yyyy")</h3>
-    <div style="text-align: center">Last updated @Model.LastUpdated.ToString("dd/MM/yyyy h:mm tt")</div>
+    <h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.LastUpdated.AddDays(-1).ToString("d MMMM yyyy")</h3>
+    <div style="text-align: center">There have been <b>@Model.MatchDaysDone</b> match days to date, with <b>@Model.MatchDaysRemaining</b> match days remaining</div>
 </div>
 <div class="row">
     <div class="col-3">
         <table class="table table-sm table-borderless table-striped text-center" width="100%">
             <thead>
                 <tr>
-                    <th colspan="2" align="center"><h3>Multi Gun/Other</h3></th>
+                    <th colspan="3" align="center"><h3>Multi Gun/Other</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.MultiGun.Count == 0)
                 {
                     <tr>
-                        <td colspan="2" align="center">
+                        <td colspan="3" align="center">
                             <div class="bg-info text-white m-3">No data</div>
                         </td>
                     </tr>
@@ -91,7 +137,7 @@
                             <td>
                                 <AuthorizeView Roles="Admin">
                                     <Authorized>
-                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                        <NavLink href="@("/pnznumber/" + Uri.EscapeDataString(item.PNZNumber))">@item.PNZNumber</NavLink>
                                     </Authorized>
                                     <NotAuthorized>
                                         <b>@item.PNZNumber</b>
@@ -99,6 +145,7 @@
                                 </AuthorizeView>
                             </td>
                             <td>@item.Count</td>
+                            <td><i class="@GetStatusClass(item)" title="@GetStatusHint(item)"></i></td>
                         </tr>
                     }
                 }
@@ -110,11 +157,12 @@
         <table class="table table-sm table-borderless table-striped text-center" width="100%">
             <thead>
                 <tr>
-                    <th colspan="2" align="center"><h3>CAS</h3></th>
+                    <th colspan="3" align="center"><h3>CAS</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -134,7 +182,7 @@
                             <td>
                                 <AuthorizeView Roles="Admin">
                                     <Authorized>
-                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                        <NavLink href="@("/pnznumber/" + Uri.EscapeDataString(item.PNZNumber))">@item.PNZNumber</NavLink>
                                     </Authorized>
                                     <NotAuthorized>
                                         <b>@item.PNZNumber</b>
@@ -142,6 +190,7 @@
                                 </AuthorizeView>
                             </td>
                             <td>@item.Count</td>
+                            <td><i class="@GetStatusClass(item)" title="@GetStatusHint(item)"></i></td>
                         </tr>
                     }
 
@@ -153,11 +202,12 @@
         <table class="table table-sm table-borderless table-striped text-center" width="100%">
             <thead>
                 <tr>
-                    <th colspan="2" align="center"><h3>IPSC</h3></th>
+                    <th colspan="3" align="center"><h3>IPSC</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -177,7 +227,7 @@
                             <td>
                                 <AuthorizeView Roles="Admin">
                                     <Authorized>
-                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                        <NavLink href="@("/pnznumber/" + Uri.EscapeDataString(item.PNZNumber))">@item.PNZNumber</NavLink>
                                     </Authorized>
                                     <NotAuthorized>
                                         <b>@item.PNZNumber</b>
@@ -185,6 +235,7 @@
                                 </AuthorizeView>
                             </td>
                             <td>@item.Count</td>
+                            <td><i class="@GetStatusClass(item)" title="@GetStatusHint(item)"></i></td>
                         </tr>
                     }
                 }
@@ -195,11 +246,12 @@
         <table class="table table-sm table-borderless table-striped text-center" width="100%">
             <thead>
                 <tr>
-                    <th colspan="2" align="center"><h3>ISSF</h3></th>
+                    <th colspan="3" align="center"><h3>ISSF</h3></th>
                 </tr>
                 <tr>
                     <th>PNZ #</th>
                     <th>Totals</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -219,7 +271,7 @@
                             <td>
                                 <AuthorizeView Roles="Admin">
                                     <Authorized>
-                                        <NavLink href="@("/pnznumber/" + item.PNZNumber)">@item.PNZNumber</NavLink>
+                                        <NavLink href="@("/pnznumber/" + Uri.EscapeDataString(item.PNZNumber))">@item.PNZNumber</NavLink>
                                     </Authorized>
                                     <NotAuthorized>
                                         <b>@item.PNZNumber</b>
@@ -227,9 +279,9 @@
                                 </AuthorizeView>
                             </td>
                             <td>@item.Count</td>
+                            <td><i class="@GetStatusClass(item)" title="@GetStatusHint(item)"></i></td>
                         </tr>
                     }
-
                 }
             </tbody>
         </table>

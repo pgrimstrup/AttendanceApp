@@ -40,15 +40,7 @@
     <h2>Members</h2>
 </div>
 <div class="table-responsive">
-    @if (Model.FilterText.Length < 3)
-    {
-        <div class="alert alert-info p-3 w-50 my-3 mx-auto text-center">
-            <span>
-                Enter at least 3 characters into the search criteria
-            </span>
-        </div>
-    }
-    else if (!Model.FilteredMembers.Any())
+    @if (!Model.FilteredMembers.Any())
     {
         <div class="alert alert-warning p-3 w-50 my-3 mx-auto text-center">
             <span>
@@ -75,7 +67,7 @@
                     <tr>
                         <td>
                             <div>
-                                @if (member.PersonId == member.EntraPersonId && (String.IsNullOrWhiteSpace(member.EntraInfo1) || member.FullName == member.EntraInfo1))
+                                @if (member.PersonId == member.EntraPersonId)
                                 {
                                     <i class="bi bi-check-circle-fill text-success px-1" />
                                 }
@@ -89,12 +81,9 @@
                                 }
                                 @member.PersonId
                             </div>
-                            @if (member.PersonId != member.EntraPersonId)
+                            @if (member.PersonId != member.EntraPersonId && !String.IsNullOrWhiteSpace(member.EntraCardNumber))
                             {
-                                if (member.PersonId != null && member.EntraPersonId != null)
-                                {
-                                    <div class="small text-danger"><b>EntraPass:</b> @member.EntraCardUserName</div>
-                                }
+                                <div class="small"><b>EntraPass:</b> @member.EntraCardUserName</div>
                             }
                         </td>
                         <td>

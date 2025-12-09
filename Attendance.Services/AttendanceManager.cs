@@ -35,9 +35,9 @@ public class AttendanceManager : IAttendanceManager
 	static string MembersQuery = @"
 WITH CardUsers(EntraPersonId, EntraCardNumber, EntraCardUserName, EntraInfo1, EntraEndDate) AS (
 	SELECT 
-		PersonId, CardNumber, CardUserName, CardInfo1, MAX(ExpiryDate)
+		PersonId, CardNumber, REPLACE(CardUserName, '  ', ' '), MAX(CardInfo1), MAX(ExpiryDate)
 	FROM EntraPassImport
-	GROUP BY PersonId, CardNumber, CardUserName, CardInfo1
+	GROUP BY PersonId, CardNumber, REPLACE(CardUserName, '  ', ' ')
 )
 SELECT 
 	s.PersonId, s.CardNumber SportyCardNumber, 
@@ -45,14 +45,14 @@ SELECT
 	s.FALNumber, s.PNZNumber, s.MobileNumber, s.EmailAddress, s.Sections,
 	u1.*
 FROM SportyImport s
-FULL OUTER JOIN CardUsers u1 ON u1.EntraCardNumber = s.CardNumber OR u1.EntraPersonId = s.PersonId
+FULL OUTER JOIN CardUsers u1 ON u1.EntraCardNumber = s.CardNumber
 ";
 
 	static string ActivityQuery = @"
 WITH Members AS
 (
 	SELECT 
-		s.PersonId, s.CardNumber SportyCardNumber, 
+		s.PersonId, s.CardNumber SportyCardNumber,  s.PriorCardNumbers,
 		s.RegistrationDate, s.FirstName, s.LastName,
 		s.FALNumber, s.PNZNumber, s.MobileNumber, s.EmailAddress, s.Sections
 	FROM SportyImport s
@@ -67,35 +67,42 @@ SELECT
 	swipes.ExpiryDate EntraEndDate,
 	Members.*
 FROM EntraPassImport swipes
-LEFT OUTER JOIN Members ON Members.PersonId = swipes.PersonId OR Members.SportyCardNumber = swipes.CardNumber
+LEFT OUTER JOIN Members ON Members.SportyCardNumber = swipes.CardNumber OR 
+	swipes.CardNumber IN (SELECT value FROM string_split(Members.PriorCardNumbers, ' '))
 WHERE (@StartDate IS NULL OR swipes.EventTime >= @StartDate) AND (@EndDate IS NULL OR swipes.EventTime < @EndDate)
 ";
 
 
     static string AttendanceQuery = @"
-WITH Entries(EntryTime, EntryCardNumber, EntryPersonId) AS 
+WITH Entries(EntryTime, EntryCardNumber) AS 
 (
-	SELECT MIN(EventTime), CardNumber, PersonId 
+	SELECT MIN(EventTime), CardNumber
 	FROM EntraPassImport
 	WHERE Location = 'Vehicle Gate Entry'
 	  AND EventTime >= @StartDate AND EventTime < @EndDate
-	GROUP BY CONVERT(DATE, EventTime), CardNumber, PersonId
+	GROUP BY CONVERT(DATE, EventTime), CardNumber
 ),
-Exits(ExitTime, ExitCardNumber, ExitPersonId) AS 
+Exits(ExitTime, ExitCardNumber) AS 
 (
-	SELECT MAX(EventTime), CardNumber, PersonId 
+	SELECT MAX(EventTime), CardNumber
 	FROM EntraPassImport
 	WHERE Location = 'Vehicle Gate Exit'
 	  AND EventTime >= @StartDate AND EventTime < @EndDate
-	GROUP BY CONVERT(DATE, EventTime), CardNumber, PersonId
+	GROUP BY CONVERT(DATE, EventTime), CardNumber
 ),
-Ranges(RangeTime, RangeCardNumber, RangePersonId) AS
+Ranges(RangeTime, RangeCardNumber) AS
 (
-	SELECT MIN(EventTime), CardNumber, PersonId 
+	SELECT MIN(EventTime), CardNumber
 	FROM EntraPassImport
 	WHERE Location IN ('Range 1', 'Range 5')
 	  AND EventTime >= @StartDate AND EventTime < @EndDate
-	GROUP BY CONVERT(DATE, EventTime), CardNumber, PersonId
+	GROUP BY CONVERT(DATE, EventTime), CardNumber
+),
+PersonCardNumber(PersonId, CardNumber) AS
+(
+	SELECT PersonId, CardNumber FROM SportyImport
+	UNION
+	SELECT PersonId, (SELECT value FROM string_split(PriorCardNumbers, ' ')) FROM SportyImport WHERE PriorCardNumbers IS NOT NULL
 ),
 Dates(EventDate, IsPistolDay, IsClosedDay, IsClosedOverride, IsOpenOverride) AS 
 (
@@ -121,17 +128,20 @@ SELECT p.PersonId, p.FirstName, p.LastName, p.CardNumber RegisteredCardNumber,
 	COALESCE(Overrides.IsExcluded, CAST(0 AS BIT)) IsExcluded, 
 	COALESCE(Overrides.IsIncluded, CAST(0 AS BIT)) IsIncluded,
 	COALESCE(Away.IsAwayEvent, CAST(0 AS BIT)) IsAwayEvent, Away.AwayLocation, Away.AwayEventName,
-	Entries.EntryTime, Ranges.RangeTime, Exits.ExitTime,
-	COALESCE(Entries.EntryCardNumber, Ranges.RangeCardNumber, Exits.ExitCardNumber) SwipedCardNumber,
-	COALESCE(Entries.EntryPersonId, Ranges.RangePersonId, Exits.ExitPersonId) SwipedPersonId
+	Entries.EntryTime, Ranges.RangeTime, Exits.ExitTime, 
+	CASE 
+		WHEN COALESCE(Entries.EntryTime, Exits.ExitTime, Ranges.RangeTime) IS NOT NULL THEN pcn.CardNumber 
+		ELSE NULL
+	END SwipedCardNumber
 FROM SportyImport p
+LEFT JOIN PersonCardNumber pcn ON pcn.PersonId = p.PersonId
 CROSS JOIN Dates
-left outer join Overrides on Overrides.PersonId = p.PersonId AND Overrides.EventDate = Dates.EventDate
-LEFT OUTER JOIN Entries on Entries.EntryPersonId = p.PersonId AND CONVERT(DATE, Entries.EntryTime) = Dates.EventDate
-LEFT OUTER JOIN Exits on Exits.ExitPersonId = p.PersonId AND CONVERT(DATE, ExitTime) = Dates.EventDate
-LEFT OUTER JOIN Ranges on Ranges.RangePersonId = p.PersonId AND CONVERT(DATE, RangeTime) = Dates.EventDate
-LEFT OUTER JOIN Away on Away.PersonId = p.PersonId AND Dates.EventDate = Away.EventDate
-WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL OR Dates.IsPistolDay = 1 OR IsAwayEvent = 1)
+LEFT OUTER JOIN Entries on Entries.EntryCardNumber = pcn.CardNumber AND CONVERT(DATE, Entries.EntryTime) = Dates.EventDate
+LEFT OUTER JOIN Exits on Exits.ExitCardNumber = pcn.CardNumber AND CONVERT(DATE, ExitTime) = Dates.EventDate
+LEFT OUTER JOIN Ranges on Ranges.RangeCardNumber = pcn.CardNumber AND CONVERT(DATE, RangeTime) = Dates.EventDate
+LEFT OUTER JOIN Overrides on Overrides.PersonId = pcn.PersonId AND Overrides.EventDate = Dates.EventDate
+LEFT OUTER JOIN Away on Away.PersonId = pcn.PersonId AND Dates.EventDate = Away.EventDate
+WHERE (Entries.EntryTime IS NOT NULL OR Exits.ExitTime IS NOT NULL OR Ranges.RangeTime IS NOT NULL OR IsAwayEvent = 1 OR Dates.IsPistolDay = 1)
 ";
 
 	readonly IServiceProvider _services;

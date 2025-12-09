@@ -19,6 +19,10 @@ Thread.CurrentThread.CurrentUICulture = nz;
 var builder = WebApplication
     .CreateBuilder(args);
 
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+builder.Configuration.AddJsonFile(builder.Environment.IsDevelopment() ? "appsettings.Development.json" : "appsettings.Production.json", optional: true, reloadOnChange: true);
+
 // Add authentication services
 builder.Services.AddAuthentication(options => {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

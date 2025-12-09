@@ -6,7 +6,6 @@ public class MemberHistoryViewModel
 {
     DateTime _startTime;
     DateTime _endTime;
-    DateTime _lastUpdated;
 
     public int Year { get; set; }
     public string PNZNumber { get; set; } = string.Empty;
@@ -22,8 +21,6 @@ public class MemberHistoryViewModel
         if(_endTime >= DateTime.Today)
             _endTime = DateTime.Today.AddDays(-1);
 
-        _lastUpdated = DateTime.Now;
-
         Attendance = new();
         SwipeEvents = new();
     }
@@ -34,7 +31,7 @@ public class MemberHistoryViewModel
 
     public DateTime EndDate => _endTime;
 
-    public DateTime LastUpdated => _lastUpdated;
+    public DateTime LastUpdated { get; set; }
 
     public int TotalMatchDays => Attendance.Count(a => a.IsMatchDay);
     public int TotalEventsCounted => Attendance.Count(a => a.IsCounted);

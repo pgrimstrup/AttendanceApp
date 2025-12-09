@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Attendance.Data;
 using CSVFile;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Attendance.Services;
@@ -8,6 +9,7 @@ namespace Attendance.Services;
 public interface IEntraPassImporter
 {
     Task<bool> Import(Stream stream);
+    Task<DateTime> GetLastImportDateTimeAsync();
     Task<byte[]> CreateTestData(Stream stream);
 
 }
@@ -23,6 +25,17 @@ public class EntraPassImporter : IEntraPassImporter
         _logger = logger;
         _dbContext = dbContext;
         _attendanceManager = attendanceManager;
+    }
+
+    public async Task<DateTime> GetLastImportDateTimeAsync()
+    {
+        var dt = await _dbContext.ImportedFiles
+            .Where(f => f.FileType == "EntraPass")
+            .OrderByDescending(f => f.DateImported)
+            .Select(f => f.DateImported)
+            .FirstOrDefaultAsync();
+
+        return dt.ToLocalTime().DateTime;
     }
 
     public async Task<bool> Import(Stream stream)
@@ -41,6 +54,12 @@ public class EntraPassImporter : IEntraPassImporter
             cardInfo2Index < 0 || eventMessageIndex < 0 || endDateIndex < 0 || eventInfo1Index < 0)
             return false;
 
+        var info = new ImportedFile {
+            FileType = "EntraPass",
+            DateImported = DateTimeOffset.UtcNow,
+            FileContent = "CSV"
+        };
+        await _dbContext.ImportedFiles.AddAsync(info);
 
         foreach (var line in csv)
         {
@@ -54,7 +73,7 @@ public class EntraPassImporter : IEntraPassImporter
                     CardInfo2 = line[cardInfo2Index]?.Trim(),
                     EventMessage = line[eventMessageIndex],
                     ExpiryDate = Convert.ToDateTime(line[endDateIndex]),
-                    Location = line[eventInfo1Index]?.Replace("RRGC-", "")?.Trim()
+                    Location = line[eventInfo1Index]?.Replace("RRGC-", "")?.Trim(),
                 };
 
                 ExtractPersonDetails(data);

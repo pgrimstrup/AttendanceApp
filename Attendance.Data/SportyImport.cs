@@ -1,4 +1,6 @@
-﻿namespace Attendance.Data
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Attendance.Data
 {
     [Flags]
     public enum SectionTags
@@ -34,5 +36,8 @@
         // Used to 2FA
         public int? AuthCode { get; set; }
         public DateTime? AuthCodeExpiry { get; set; }
+
+        [NotMapped]
+        public string LastInitial => String.IsNullOrWhiteSpace(LastName) || LastName.Length < 1 ? "" : LastName.Substring(0, 1);
     }
 }

@@ -8,6 +8,7 @@ namespace Attendance.Services;
 
 public interface ICalendarManager
 {
+    Task<CalendarDay[]> GetCalendarDays(DateTime currentTime);
     Task<CalendarDay[]> GetCalendarDays(int year, int month);
     Task<CalendarCategory[]> GetCalendarCategories(int year, int month);
     Task UpdateCalendarCategory(CalendarCategory category);
@@ -24,6 +25,22 @@ public class CalendarManager : ICalendarManager
     {
         _services = services;
         _logger = logger;
+    }
+
+    public async Task<CalendarDay[]> GetCalendarDays(DateTime currentTime)
+    {
+        DateTime startDate = new DateTime(currentTime.Year, 7, 1);
+        if (DateTime.Now.Month <= 6)
+            startDate = startDate.AddYears(-1);
+
+        DateTime endDate = startDate.AddYears(1).AddDays(-1);
+
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.CalendarDays
+            .AsNoTracking()
+            .Where(cd => cd.Date >= DateOnly.FromDateTime(startDate) && cd.Date <= DateOnly.FromDateTime(endDate))
+            .ToArrayAsync();
     }
 
     public async Task<CalendarDay[]> GetCalendarDays(int year, int month)

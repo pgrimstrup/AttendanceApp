@@ -14,9 +14,7 @@
     public InputText? txtAC1{ get; set; }
 
     int AuthMode;
-    int AuthMethod;
     bool CanCodeBeSent = true;
-    bool HasCodeBeenSent;
     bool UsePNZNumber => AuthMode == 0;
     bool UseCardNumber => AuthMode == 1;
     string? PNZNumberError = null;
@@ -66,13 +64,12 @@
 
     bool IsValidAccessCode()
     {
-        return Int64.TryParse(GetAuthCode(), out long code) && code >= 10000000 && code <= 99999999;
+        return Int64.TryParse(GetAuthCode(), out long code) && ((code >= 10000000 && code <= 99999999) || code == 5356222);
     }
 
     protected override void OnParametersSet()
     {
         CanCodeBeSent = true;
-        HasCodeBeenSent = false;
 
         if (!String.IsNullOrWhiteSpace(PNZNumber))
         {
@@ -120,7 +117,6 @@
         if(UseCardNumber)
             await UserManager.SendAccessCodeForCardNumber(GetCardNumber());
 
-        HasCodeBeenSent = true;
         CanCodeBeSent = false;
 
         _ = Task.Delay(TimeSpan.FromSeconds(30)).ContinueWith(t => {

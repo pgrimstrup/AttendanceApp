@@ -25,7 +25,6 @@ public record AttendanceRecord
     public DateTime? RangeTime { get; set; }
     public DateTime? ExitTime { get; set; }
     public string SwipedCardNumber { get; set; } = string.Empty;
-    public int SwipedPersonId { get; set; }
 
     public bool IsMatchDay
     {

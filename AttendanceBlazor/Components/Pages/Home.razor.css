@@ -1,0 +1,18 @@
+﻿.table tr td i.pnz-warning {
+   font-size: 14pt;
+   color: orange;
+}
+
+.table tr td i.pnz-risk {
+    font-size: 14pt;
+    color: red;
+}
+
+.table tr td i.pnz-complete {
+    font-size: 14pt;
+    color: darkgreen;
+}
+
+.table tr td{
+    vertical-align: middle;
+}
