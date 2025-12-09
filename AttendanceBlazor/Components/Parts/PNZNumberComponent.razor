@@ -1,8 +1,9 @@
 ﻿@using System.Security.Claims
 @rendermode InteractiveServer
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
 @inject IAttendanceManager AttendanceManager
-@inject IHttpContextAccessor Accessor
+@inject IEntraPassImporter EntraPassImporter
 
 @code {
 
@@ -11,7 +12,6 @@
 
     MemberHistoryViewModel Model { get; set; } = new(null);
     AwayEventViewModel AwayEvent { get; set; } = new();
-    bool PermissionDenied;
 
     protected override async Task OnInitializedAsync()
     {
@@ -20,18 +20,15 @@
         ClearAwayEvent();
     }
 
-    private bool AllowAccessToPnzNumber(ClaimsPrincipal? user, string? pnzNumber)
+    private bool CanEditPnzNumber(ClaimsPrincipal? user, string? pnzNumber)
     {
-        if (user == null || String.IsNullOrWhiteSpace(pnzNumber))
+        if (user == null || String.IsNullOrEmpty(pnzNumber))
             return false;
 
         if (user.IsInRole("Admin"))
             return true;
 
-        if (!user.IsInRole("PNZ"))
-            return false;
-
-        if (user.Claims.FirstOrDefault(c => c.Type == "PNZ")?.Value == pnzNumber)
+        if (user.IsInRole("PNZ") && user.Claims.FirstOrDefault(c => c.Type == "PNZ")?.Value == pnzNumber)
             return true;
 
         return false;
@@ -41,17 +38,15 @@
     private async Task<MemberHistoryViewModel> LoadModelData(int? year, string? pnzNumber)
     {
         var model = new MemberHistoryViewModel(year);
+        model.LastUpdated = await EntraPassImporter.GetLastImportDateTimeAsync();
         model.PNZNumber = pnzNumber ?? string.Empty;
 
-        var user = Accessor.HttpContext?.User;
-        if (!AllowAccessToPnzNumber(user, pnzNumber))
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (CanEditPnzNumber(user, model.PNZNumber))
         {
-            PermissionDenied = true;
-        }
-        else
-        {
-            PermissionDenied = false;
-            var attendance = await AttendanceManager.GetAttendanceAsync(Model.StartDate, Model.EndDate, PNZNumber);
+            model.CanEdit = true;
+            var attendance = await AttendanceManager.GetAttendanceAsync(model.StartDate, model.EndDate, model.PNZNumber);
             foreach (var record in attendance)
             {
                 if (record.EntryTime == null && record.ExitTime == null && record.RangeTime == null && !record.IsAwayEvent)
@@ -67,7 +62,7 @@
             {
                 // Show events for all cards related to the PNZ number
                 var cardNumbers = model.Attendance.Select(a => a.CardNumber).Distinct().ToArray();
-                var swipeEvents = await AttendanceManager.GetSwipeCardEventsAsync(Model.StartDate, Model.EndDate, cardNumbers);
+                var swipeEvents = await AttendanceManager.GetSwipeCardEventsAsync(model.StartDate, model.EndDate, cardNumbers);
                 model.SwipeEvents.AddRange(swipeEvents);
             }
 
@@ -93,14 +88,14 @@
     private async Task ExcludeEvent(AttendanceViewModel record)
     {
         await AttendanceManager.ExcludedAsync(record.PersonId, DateOnly.FromDateTime(record.EventDate), record.IsOnRange);
-        Model = await LoadModelData(Model.Year, PNZNumber);
+        Model = await LoadModelData(Model.Year, Model.PNZNumber);
         StateHasChanged();
     }
 
     private async Task IncludeEvent(AttendanceViewModel record)
     {
         await AttendanceManager.IncludedAsync(record.PersonId, DateOnly.FromDateTime(record.EventDate), record.IsOnRange);
-        Model = await LoadModelData(Model.Year, PNZNumber);
+        Model = await LoadModelData(Model.Year, Model.PNZNumber);
         StateHasChanged();
     }
 
@@ -129,10 +124,11 @@
 }
 
 <h2 style="text-align:center">Attendance details for PNZ Number @Model.PNZNumber</h2>
-<h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.EndDate.ToString("d MMMM yyyy")</h3>
-<div style="text-align: center">Last updated @Model.LastUpdated.ToString("dd/MM/yyyy h:mm tt")</div>
+<h3 style="text-align: center">from @Model.StartDate.ToString("d MMMM yyyy") to @Model.LastUpdated.ToString("d MMMM yyyy")</h3>
 
-@if (PermissionDenied)
+
+
+@if (!Model.CanEdit)
 {
     <div class="alert alert-danger p-3 w-50 my-3 mx-auto text-center">
         <span>
@@ -140,16 +136,17 @@
         </span>
     </div>
 }
-else
-@if (Model.Attendance.Count == 0)
+
+@if (Model.CanEdit && Model.Attendance.Count == 0)
 {
     <div class="alert alert-info p-3 w-50 my-3 mx-auto text-center">
         <span>
-            There are no recorded attendances at club matches for this club member
+            There are no recorded attendances at club matches for this PNZ Number
         </span>
     </div>
 }
-else
+
+@if(Model.Attendance.Count > 0)
 {
     <table class="table table-striped table-sm">
         <thead>
@@ -183,13 +180,13 @@ else
                     else
                     {
                         <td style="text-align:center">
-                            @if (Model.IsPNZMember && record.IsMatchDay)
+                            @if (Model.HasPNZNumber && record.IsMatchDay)
                             {
                                 <i class="bi bi-calendar-check" style="font-size: 18px" />
                             }
                         </td>
                         <td>@record.EntryTime</td>
-                        @if (Model.IsPNZMember)
+                        @if (Model.HasPNZNumber)
                         {
                             if (record.IsIncluded)
                             {
@@ -215,7 +212,7 @@ else
                         <td>@record.ExitTime</td>
                     }
                     <td style="text-align:center">
-                        @if (Model.IsPNZMember && record.IsCounted)
+                        @if (Model.HasPNZNumber && record.IsCounted)
                         {
                             <i class="bi bi-check2-square" style="font-size: 18px" />
                         }
@@ -266,48 +263,51 @@ else
 
 <AuthorizeView Roles="Admin">
     <Authorized>
-        <hr />
-        <h2 style="text-align: center" class="mt-5">Add an Away Match</h2>
-        <div class="row">
-            <!-- Location -->
-            <div class="col-3">
-                <label for="location" class="col-form-label">Club Name</label>
-                <InputText id="location" class="form-control" @bind-Value="AwayEvent.Location" placeholder="Enter location" />
-            </div>
+        @if (Model.CanEdit)
+        {
+            <hr />
+            <h2 style="text-align: center" class="mt-5">Add an Away Match</h2>
+            <div class="row">
+                <!-- Location -->
+                <div class="col-3">
+                    <label for="location" class="col-form-label">Club Name</label>
+                    <InputText id="location" class="form-control" @bind-Value="AwayEvent.Location" placeholder="Enter location" />
+                </div>
 
-            <!-- Event Name -->
-            <div class="col-3">
-                <label for="eventName" class="col-form-label">Event Name</label>
-                <InputText id="eventName" class="form-control" @bind-Value="AwayEvent.EventName" placeholder="Enter event name" />
-            </div>
+                <!-- Event Name -->
+                <div class="col-3">
+                    <label for="eventName" class="col-form-label">Event Name</label>
+                    <InputText id="eventName" class="form-control" @bind-Value="AwayEvent.EventName" placeholder="Enter event name" />
+                </div>
 
-            <!-- Start Date -->
-            <div class="col-2">
-                <label for="startDate" class="col-form-label">Start Date</label>
-                <InputDate id="startDate" class="form-control" @bind-Value="AwayEvent.StartDate" />
-            </div>
+                <!-- Start Date -->
+                <div class="col-2">
+                    <label for="startDate" class="col-form-label">Start Date</label>
+                    <InputDate id="startDate" class="form-control" @bind-Value="AwayEvent.StartDate" />
+                </div>
 
-            <!-- End Date -->
-            <div class="col-2">
-                <label for="endDate" class="col-form-label">End Date</label>
-                <InputDate id="endDate" class="form-control" @bind-Value="AwayEvent.EndDate" />
-            </div>
+                <!-- End Date -->
+                <div class="col-2">
+                    <label for="endDate" class="col-form-label">End Date</label>
+                    <InputDate id="endDate" class="form-control" @bind-Value="AwayEvent.EndDate" />
+                </div>
 
-        </div>
-        <div class="row my-1">
-            <div class="col-10">
-                <InputText class="form-control" @bind-Value="AwayEvent.Notes" placeholder="Enter notes"></InputText>
             </div>
-            <!-- Buttons -->
-            <div style="white-space:nowrap; width:1px;">
-                <button type="button" class="btn btn-secondary" @onclick="ClearAwayEvent">Clear</button>
-                <button type="button" class="btn btn-primary" @onclick="SaveAwayEvent">Save</button>
+            <div class="row my-1">
+                <div class="col-10">
+                    <InputText class="form-control" @bind-Value="AwayEvent.Notes" placeholder="Enter notes"></InputText>
+                </div>
+                <!-- Buttons -->
+                <div style="white-space:nowrap; width:1px;">
+                    <button type="button" class="btn btn-secondary" @onclick="ClearAwayEvent">Clear</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveAwayEvent">Save</button>
+                </div>
             </div>
-        </div>
+        }
     </Authorized>
 </AuthorizeView>
 
-@if (!PermissionDenied)
+@if (Model.CanEdit)
 {
     <hr />
     <h2 style="text-align: center" class="mt-5">All Activity</h2>
@@ -349,3 +349,9 @@ else
         </table>
     }
 }
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <div>[Model.Year] is @Model.Year. [Model.PNZNumber] is @Model.PNZNumber. [Model.CanEdit] is @Model.CanEdit.</div>
+    </Authorized>
+</AuthorizeView>

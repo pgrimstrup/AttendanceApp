@@ -82,7 +82,7 @@ else
                         }
                     </td>
                     <td>@record.EntryTime</td>
-                    @if (Model.IsPNZMember)
+                    @if (Model.HasPNZNumber)
                     {
                         if (record.IsIncluded)
                         {
@@ -111,7 +111,7 @@ else
                     }
                     <td>@record.ExitTime</td>
                     <td style="text-align:center">
-                        @if (Model.IsPNZMember && record.IsCounted)
+                        @if (Model.HasPNZNumber && record.IsCounted)
                         {
                             <i class="bi bi-check2-square" style="font-size: 18px" />
                         }
@@ -123,7 +123,7 @@ else
                 </tr>
             }
         </tbody>
-        @if (Model.IsPNZMember)
+        @if (Model.HasPNZNumber)
         {
             <tfoot>
                 <tr>

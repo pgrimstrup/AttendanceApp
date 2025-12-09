@@ -10,8 +10,8 @@ public class MemberHistoryViewModel
     public int Year { get; set; }
     public string PNZNumber { get; set; } = string.Empty;
     public string CardNumber { get; set; } = string.Empty;
-
-    public bool IsPNZMember => !String.IsNullOrWhiteSpace(PNZNumber);
+    public bool CanEdit { get; set; }
+    public bool HasPNZNumber => !string.IsNullOrWhiteSpace(PNZNumber);
 
     public MemberHistoryViewModel(int? year)
     {
